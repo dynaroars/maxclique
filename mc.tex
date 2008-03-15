@@ -1,0 +1,843 @@
+\documentclass[11pt]{article} 
+\usepackage[dvips]{graphicx} 
+\usepackage[bf]{caption2} 
+\usepackage{amsmath}
+\usepackage[figure,ruled,vlined]{algorithm2e}
+\usepackage{verbatim}
+\setlength{\textwidth}{6in} 
+\setlength{\textheight}{8.5in} 
+\setlength{\oddsidemargin}{0.2in}
+\setlength{\evensidemargin}{0.5in}
+\setlength{\topskip}{0in} 
+\setlength{\topmargin}{0in} 
+\setlength{\headsep}{0in}
+
+\newcommand{\myfont}[1]{{\usefont{OT1}{cmss}{m}{it}#1}}
+  
+\begin{document}  
+
+\title{Implementing the Max-Clique Ant-System Algorithm in Parallel Environments} 
+\author{ 
+Authors\\ 
+% Computer Science Program\\ 
+% Penn State Harrisburg\\ 
+% Middletown, PA 17057\\ 
+}  
+\maketitle  
+
+%todo (done): find a common word c_w describing both parallel / distributed computing
+% integrate everything together, make sure they are coherent. 
+
+\begin{abstract}
+In this paper we present techniques to transform sequential Ant System algorithms into two 
+main parallel environments, namely the shared and distributed memory platforms.
+The \textit{Max-Clique} Ant System algorithm is chosen as our reference testbed 
+due to the popularity of the \textit{Clique} problem and also the algorithm 
+throghout published results in [ref].%need to rephrase this
+Our techniques parallize to the sequential Ant-System algorithm, 
+thus provide noticeable improvement in 
+the algorithm running time while maintaining solution qualities 
+comparable to ones obtained from the sequential version.
+ %characteristics of dist / parallel
+%todo: need other motivations other than speed improvement since 
+%dist actually performs worse than seq!
+\end{abstract}
+
+
+\section{Introduction}\label{intro}
+
+Shared-memory environment consists of a single node with multiple cores or processors sharing 
+the main memory 
+while distributed-memory environment is a collection of multiple nodes, with each node 
+contains a single processor with its own set of main memory. %is this line necessary ?
+
+The rest of the paper is organized as follows.  In Section~\ref{prelim} we
+give some preliminaries.  In Section~\ref{algorithm} we describe our ant
+system algorithm for the \textit{Max-Clique} problem.  Section~\ref{distributed}
+describes a distributed implementation of this algorithm.  We compare the
+performance of our algorithm against some existing algorithms in
+Section~\ref{results}.  The conclusion is given in Section~\ref{conclusion}.
+
+\section{Background}\label{background} 
+
+\subsection{Ant-System algorithm}\label{max_clique} 
+
+Ant System (AS) is a heuristic technique that imitates the behavior of a
+colony of ants and their ability to collectively solve problems.  For
+example, it has been observed that a colony of ants is able to find the
+shortest path to a food source by marking their trails with a chemical
+substance called {\it pheromone} \cite{BDT}\cite{DG}.
+
+As an ant moves and searches for food, it lays down pheromone along its
+path. As it decides where to move, it looks for pheromone trails and prefers
+to follow trails with higher levels of pheromone. Suppose there are two
+possible paths to reach a food source.  Regardless of the path chosen, the ant
+will lay the same amount of pheromone at each step. However, it will return to
+its starting point quicker when it takes the shorter path.  It is then able to
+return to the food source to collect more food.  Thus, in an equal amount of
+time, the ant would lay a higher concentration of pheromone over its path if
+it takes the shorter path, since it would complete more trips in the given
+time.  Ants prefer to follow the path with the most accumulation of pheromone,
+which happens to be the shortest path. In addition, some pheromone evaporates
+over time although not a significant amount \cite{BDT}\cite{DG}.
+
+The Traveling Salesman problem (TSP) was one of the first problems to which
+the Ant System (AS) technique was applied \cite{BDT} \cite{DG}.  TSP is the
+well-known problem of finding the smallest cost tour in an edge weighted
+complete graph.  The tour must visit each vertex in the graph exactly once,
+starting and ending at the same vertex.  The cost of a tour is the sum of the
+costs of the edges in the tour.  A typical ant system algorithm or more
+precisely, ant colony optimization (ACO) algorithm, for TSP consists of a
+number of ants.  Each ant takes turn finding a tour in the given input graph.
+After an ant has found a tour, it deposits an equal amount of pheromone on
+each edge of the tour.  The amount of pheromone deposited is a function of the
+cost of the tour.  Normally, this amount is inversely proportional to the cost
+of the tour, i.e., the smaller the cost of the tour the more pheromone are
+deposited.  Thus, edges in a low cost tour will have more pheromone deposited
+on them than edges in a high cost tour.  Also, an edge may have more pheromone
+deposited on it if it is used in one or more tours constructed by the ants.
+Pheromone effectively acts as a memory device helping later ants to construct
+their tours.  In fact, the amount of pheromone on each edge is an important
+factor in the construction of a tour by an ant.  Generally, ants will tend to
+pick edges with higher concentration of pheromone in constructing tours in the
+graph.  To mitigate the problem of getting stuck in a local optimum,
+pheromone is allowed to evaporate.  Experimental results reported in
+\cite{BDT} and \cite{DG} showed that ACO algorithms for TSP are very
+competitive against existing algorithms for TSP.
+
+Other problems that have been the focus of AS as well as Ant Colony
+Optimization (ACO) \cite{DD} work include the quadratic assignment, network
+routing, vehicle routing, frequency assignment, graph coloring, shortest
+common supersequence, machine scheduling, multiple knapsack and sequential
+ordering problems, graph partitioning, maximum clique \cite{MC} \cite{BDT}.
+
+%todo: how is AS ammenable to parallel computing.
+%todo: very concern on ppl ask about Distributed approach as Joe only provide *30* results.
+
+\subsubsection{The testing problem: Maximum Clique}
+
+Let $G=(V,E)$ be a graph with vertex set $V$ and edge set $E$.  A {\it clique}
+in $G$ is a complete subgraph, i.e., a subgraph of $G$ in which there is an
+edge between any two vertices in the subgraph.  The {\it size} of a clique is
+the number of vertices in the clique.  The \textit{Max-Clique} problem is the problem of
+finding the largest clique in a given graph.  \textit{Max-Clique} arises in a variety of
+problems such as finding good codes, identifying faulty processors in
+multiprocessor systems and finding counterexamples to Keller's conjecture in
+geometry \cite{BP2}\cite{Sloane}\cite{SMW}\cite{Keller}\cite{LS}.  However, it
+is well known that \textit{Max-Clique} is $\cal NP$-hard \cite{GJ}, hence it is not
+expected to have a polynomial time algorithm.  The next best thing to have
+would be a good and efficient approximation algorithm.  But it has been shown
+under various complexity assumptions that finding a good approximation to an
+instance of \textit{Max-Clique} is just as hard as finding an optimal solution.  For
+example, it is known that unless ${\cal NP}= co-{\cal RP}$ no polynomial time
+algorithm can achieve an approximation factor of $n^{1-\epsilon}$ for
+\textit{Max-Clique} for arbitrarily small $\epsilon$ \cite{Hastad}.  %reduce length of this paragraph
+
+In 2004, Bui et al., provided an Ant-System based algorithm for the Max Clique problem as given 
+in [section Seq Approach].
+
+
+\subsection{Parallel Computing}\label{par_comp}
+\subsubsection{OpenMP}
+
+\subsection{Distributed Computing}\label{dist_comp} 
+\subsubsection{Message Passing Interface}
+
+
+\section{Implementations of Ant-System Algorithms}\label{alg}
+
+\subsection{The Sequential Implementation}\label{par_app} 
+
+
+
+\begin{center} 
+\begin{algorithm}
+\SetKwFor{For}{for}{do}{endfor}
+\SetKwComment{Comment}{//}{}
+\SetKwInOut{Input}{input}
+\SetKwInOut{Output}{output}
+\dontprintsemicolon
+
+\SetLine
+% {\bf{Algorithm ABAC}}$(G=(V,E))$  
+\Input{Graph $G=(V,E)$}
+\Output{A \myfont{clique} of $G$}
+\medskip
+\Begin{
+  \medskip
+  Use some heuristic methods to get a \myfont{clique} $q$ in $G$\;
+  Distribute \myfont{ants} on the vertices of $G$ with heavier concentration in $q$\; 
+  \medskip
+  \For{$stage = 1$ {\bf{to}} \myfont{nStages}}{
+    \For{$cycle = 1$ {\bf{to}} \myfont{nCycles}}{
+      \For{$ant = 1$ {\bf{to}} \myfont{nAnts}}{
+        $ant$ decides what to do\;
+        $ant$ executes its decision\;
+      }
+    }
+
+    \medskip
+    Find \myfont{cliques} through local optimization\;
+    Save the \myfont{(cliques)} solutions\;
+    Shuffle \myfont{ants} \Comment{perturbation}\;
+  }
+
+  \medskip
+  \Return{best} \myfont{clique} found
+  \medskip
+}
+\caption{An Ant-System algorithm for \textit{Max-Clique} (ASMC)\label{fig:asmc}} 
+\end{algorithm}
+
+\linespread{1.3}  
+\end{center} 
+
+
+
+  %Briefly describe the parts that require further explaination (e.g., FindClique is a greedy method . blah 
+%todo:  in Bui et al's apper, nCycles is set to = , nAnts = , nStages =  , so the main program spends approximatels .... 
+%say something about since nStates is small comparing to that of nNcycles * nAnts therefore we should parallelizing this section.
+
+\subsection{The Parallel Implementation}\label{par_app} 
+The main idea is to find section that can be parallelizing - of course have to make sure 
+it doesn't affect the result quality.  So we can parallel the ant work part.
+
+%see if I can find the html page where I have the result from gprof (profiler)
+
+The works of the ants in~\ref{fig:asmc} is expanded and rewritten as shown in~\ref{fig:seq_mov}
+
+%note: do NOT say anything in details about edging and stuffs, just based on the algorithm above, some conflicts do occur however it is fine since ... explain in nature that's how ants make decisions, simultenously and allow some conflicts (not all, but some, it's exactly as in this algorithm).
+%note: read this --- splitting the ant declision and ant move is actually a good idea - stick with it, since in real time, at each time step, the ant only knows what happens in the previous step -- not like the sequential method where at each cycle c, the last ant actually knows everything the other ants did at this *current* cyclec.  Thus  this is the reason why we opt for this parallelization approach.  Since it conforms with nature
+
+
+
+
+\begin{center} 
+  \begin{algorithm}
+    \SetKwFor{For}{for}{do}{endfor}
+    \SetKwComment{Comment}{//}{}
+    \dontprintsemicolon
+
+    \SetLine
+    \Begin{
+      \For{$c = 1$ {\bf{to}} \myfont{nCycles}}{
+        \medskip
+        \Comment{Ants make decisions in \myfont{parallel}}
+
+        \For{$a = 1$ {\bf{to}} \myfont{nAnts}}{
+          ant $a$ heuristicly decides its next destination, vertex v$_a$, based on surrounding \myfont{pheromone} information\;
+        }
+
+        \medskip
+
+        \Comment{Ants move in \myfont{parallel}}
+        \For{$a = 1$ {\bf{to}} \myfont{nAnts}}{
+          ant $a$ moves to new destination, vertex v$_a$, and deposites \myfont{pheromone} along the way\;
+        }
+        \medskip
+      }
+
+    }
+    \caption{Parallel Ant Operations\label{fig:par_ops}} 
+  \end{algorithm}
+
+  \linespread{1.3}  
+\end{center} 
+
+
+%todo mentioned we can try this on Coloring etc
+
+\subsection{The Distributed Implementation}\label{dist_app} 
+
+\label{distributed}
+
+ASMC is especially suited to distributed implementation since ants contribute
+partial solutions based on local information.  Distribution makes it possible
+to optimize the algorithm for speed, due to parallel processing, or for space,
+due to partitioning ants and large graphs over several machines.  Though the
+benefits gained depend on the specific implementation, ASMC itself does not
+preclude any of the benefits.
+
+
+%mention in this algorithm, distributed doesn't help much in *speed* since 
+%lots of depending steps where the clients have to send results back to server
+%before they can continue, however it saves space and another intutiion for 
+%using dist is that we can test different type of network settings to 
+%see how the ants behave, for instance instead of one large colony, we can 
+%have multiple colonies (each run on a node), an one colony might behave different from another to 
+%increase diversity.  We can also test the network types such as scale free, 
+%small-world to see if that affects the performance.  In short, we conjecture 
+%that dist is used to increase the quality of the solution (and not speed).
+
+%nice I can say this dist alg is just a proof of concept that it works !
+%future works will involve diff network settings etc etc.
+
+
+%generalize this, have  c clients and m masters,  in this experiment we use c = 4, 
+%and m = 1, it would be interesting to use other settings that resemble other network topoligies
+%.. scale free whatever.
+
+The distributed implementation built for this paper is a simple proof of
+concept and, as such, perfoms synchronous interprocess communication through a
+central server.  Ants are distributed across four machines, each of which has
+a complete copy of the graph.  The idea is for ants to move from processor to
+processor.  One machine is designated the server and the others clients 1, 2
+and 3.  The server coordinates four synchronous transactions: starting, ant
+transfer, local optimization and ending.
+
+\begin{itemize}
+
+\item To {\bf start}, the server first waits for each client to connect.  It
+then partitions the vertices into four roughly equal sets and assigns each set
+to a processor, including itself.  It sends each client a list of which
+vertices are ``owned'' by which processors.
+
+\item {\bf Ant transfer} occurs at the end of each stage.  The server asks
+each client for a list of ants that are moving to other processors.  It sorts
+these ants according to their destinations and sends each client a list of
+incoming ants.  Each processor instantiates the ants on its copy of the graph.
+It also updates cached data regarding vertices and edges connected to its
+``owned'' vertices.  The cached data makes it possible for ants to make
+informed decisions about whether to move to another processor in the future.
+
+\item {\bf Local optimization} occurs after each ant transfer.  Each client
+sends the server vertex and edge data, and the server performs the same
+operations as in the sequential implementation of ASMC.  In principle, this
+step could be redesigned to be less centralized.
+
+\item The server {\bf ends} by letting each client know that the run has
+ended.  Synchonized starting and ending makes it simpler to invoke the program
+from a script.
+
+\end{itemize}
+
+
+
+Though this implementation is rather simple, other distributed ASMC designs
+are possible.  For example, one could build a less centralized, peer-to-peer
+model.  The ant transfers could occur asynchronously throughout each stage.
+The graph partitions could adapt over time to minimize the number of shared
+edges.  The graph itself could be distributed so that each client is
+completely unaware of vertices it does not ``own,'' thereby enabling runs on
+extremely large graphs in a reasonable time.
+
+\section{Experimental Results}\label{results}
+
+In this section we present the results of our algorithm on 119 benchmark
+graphs given at http://mat.gsia.cmu.edu/COLOR04/.  Information about these
+graphs is summarized in Table~\ref{tab:info}.  The algorithm was implemented
+in C++ and run on a 3.2 GHz Mobile Pentium4 PC with 1 GB of RAM running the
+Linux operating system.  The machine benchmark is given at the end of the
+paper in Figure~\ref{fig:benchmark}.  For each of the 119 graphs in
+Table~\ref{tab:info} we ran our algorithm for 50 trials.  Of the 119 graphs
+there are 63 graphs with either known chromatic number or best known bound on
+the chromatic numbers.  Of these 63 graphs, our algorithm found matching
+bounds for 56 of them. There are 7 graphs for which our algorithm got poorer
+results, but are within 1 of the best known bound.  The results are summarized
+in Tables~\ref{tab:results1} and \ref{tab:results2}.  For each graph, we list
+the name of the graph, the chromatic number or the best known bound on the
+chromatic number, the minimum, maximum, average and standard deviation of the
+results produced by our algorithm in 50 trials.  We also list the average
+running time (in seconds) out of the 50 runs of each graph.  For a number of
+graphs the running times were too small to be recordable and were recorded as
+0.  It should be noted that the standard deviations of the results are quite
+small, less than 1 for all but three graphs.  For the remaining three graphs
+the standard deviations are less than 2.
+\subsubsection{Parallel Implementation}
+
+\linespread{1}
+\begin{table*}[ht!]
+\caption{Solution Quality, Sequential vs Parallel implementation\label{tab:spar_table}}
+\begin{footnotesize}
+\begin{center}
+\begin{tabular}{|l||c|c||c|c|c|c|c|}
+\hline
+Graph  &Opt  &Par      &Par1  &Par2 &Par4   &Par8    &Par16\\
+       &     &Best     &Avg/StdDev      &Avg/StdDev     &Avg/StdDev       &Avg/StdDev        &Avg/StdDev\\
+\hline											            				       
+c-fat200-1 	&12 &12	   &12.00/0.00 &12.00/0.00 &12.00/0.00 &12.00/0.00 &12.00/0.00\\
+c-fat500-1 	&14 &14	   &14.00/0.00 &14.00/0.00 &14.00/0.00 &14.00/0.00 &12.00/0.00\\
+%% \hline
+johnson16-2-4 	&8 	&8 	   &8.00/0.00 &8.00/0.00 &8.00/0.00 &8.00/0.00 &8.00/0.00\\
+johnson32-2-4 	&16 &16    &16.00/0.00 &16.00/0.00 &16.00/0.00 &16.00/0.00 &16.00/0.00\\
+\hline 
+keller4 &11 &11 	&10.22/0.83 &10.2/0.87 &10.35/0.84 &10.24/0.86 &10.44/0.82\\
+keller5 &27 &24     &21.28/0.87 &21.45/0.95 &21.37/0.92 &21.4/0.82 &21.46/8.89\\
+%% \hline
+hamming10-2 &512 &512 &512.00/0.00 &512.00/0.00 &512.00/0.00 &512.00/0.00 &512.00/0.00\\
+hamming8-2 	&128 &128 &128.00/0.00 &128.00/0.00 &128.00/0.00 &128.00/0.00 &512.00/0.00\\
+\hline
+san200\_0.7\_1 	&30 &30 &20.98/5.95 &21.4/6.09 &21.4/5.99 &19.24/4.62 &20.43/5.53\\
+san200\_0.9\_1 	&70 &70 &45.52/0.67 &45.58/0.62 &45.64/0.76 &45.51/0.66 &45.64/0.7\\
+san200\_0.9\_2 	&60 &60 &39.59/2.31 &39.58/2.75 &39.56/2.62 &39.84/3.07 &39.99/4.21\\
+san200\_0.9\_3 	&44 &37 &34.61/0.9 &34.83/0.98 &34.82/0.92 &34.88/1.14 &34.91/1.08\\
+san400\_0.5\_1 	&13 &13 &8.67/0.79 &8.72/0.9 &8.69/0.78 &8.73/0.79 &8.63/0.66\\
+san400\_0.9\_1 	&100 &100 &68.25/20.35 &75.66/22.44 &74.19/21.77 &73.01/21.79 &71.44/21.69\\
+\hline
+sanr200\_0.7 	&18 &18  &17.27/0.55 &17.22/0.5 &17.29/0.62 &17.34/0.62 &17.34/0.51\\
+sanr400\_0.5 	&13 &13  &12.06/0.4 &12.06/0.37 &12.01/0.41 &12.01/0.48 &11.98/0.47\\
+san1000 	    &15 &10  &9.94/0.24 &9.96/0.2 &9.94/0.24 &9.93/0.26 &9.97/0.17\\
+\hline
+brock200\_1 	&21 &21  &19.48/0.52 &19.5/0.5 &19.55/0.54 &19.57/0.53 &19.64/0.52\\
+brock400\_1 	&27 &25  &22.71/0.73 &22.75/0.67 &22.82/0.75 &22.82/0.74 &22.75/0.82\\
+brock800\_1 	&23 &21  & 18.49/0.62 &18.61/0.66 &18.59/0.6 &18.7/0.66 &18.67/0.65\\
+\hline
+p\_hat300\_1 	&8 	&8   &8/0 &7.99/0.1 &7.99/0.1 &7.99/0.1 &8/0\\
+p\_hat300\_2 	&25	&25  &25.00/0.00 &25.00/0.00 &25.00/0.00 &25.00/0.00 &25.00/0.00\\
+p\_hat300\_3 	&36 &36  &34.89/0.87 &35.1/0.89 &35.01/0.89 &35.12/0.86 &34.97/0.98\\
+p\_hat500\_1 	&9 	&9   &8.94/0.24 &8.98/0.14 &9/0 &8.98/0.14 &9/0 \\
+p\_hat500\_2 	&36 &36  &35.96/0.2 &35.98/0.14 &35.92/0.27 &35.93/0.26 &35.93/0.26\\
+p\_hat700\_1 	&11 &11  &9.31/0.61 &9.31/0.52 &9.27/0.55 &9.37/0.67 &9.24/0.51\\
+p\_hat1000\_1 	&10 &10  &9.95/0.22 &9.99/0.1 &9.98/0.14 &9.98/0.14 &9.94/0.24\\
+p\_hat1500\_1 	&12 &11	 &10.67/0.47 &10.72/0.45 &10.66/0.47 &10.72/0.45 &10.73/0.44\\
+\hline
+MANN\_a27 	&126 &126 &125.00/0.00 &125.01/0.10 &125.00/0.00 &125.01/0.10 &125.00/0.0\\
+MANN\_a45 	&345 &342 &342/0.00 &342/0.00 &342/0.00 &342/0.00 &342/0.00 \\
+\hline
+\multicolumn{8}{@{}l}{\tiny $^*$Results for 100 runs per graph.}
+%\qquad\qquad $^\dag$All times are in seconds.}\\
+%\multicolumn{9}{@{}l}{\tiny $^\dag$All times are in seconds.}\\
+\end{tabular}
+\end{center}
+\end{footnotesize}
+\end{table*}
+\linespread{1.3}
+
+
+\linespread{1}
+\begin{table*}[ht!]
+\caption{Time and Speedup Achieved$^{*\dag}$\label{tab:spar_su_par_table}}
+\begin{footnotesize}
+\begin{center}
+\begin{tabular}{|l|c|c|cc|cc|cc|cc|cc|cc|cc|cc|cc|}
+\hline
+Graph 	&Vertices &Edges             &P2   &   &P4  &   &P8   &   &P16  &\\
+        &         &                  &Time &SP &Time &SP &Time &SP &Time &SP\\
+\hline											            				       
+c-fat200-1 	&200 	&1534 		     &00.94 &0.69 &00.73 &0.89 &00.84 &0.78 &00.84 &0.78\\
+c-fat500-1 	&500 	&4459 		     &02.47 &0.79 &02.03 &0.97 &01.97 &1.00 &02.07 &0.95\\
+\hline
+johnson16-2-4 	&120 	&5460 		 &01.65 &0.97 &01.24 &1.29 &01.11 &1.44 &01.01 &1.59\\
+johnson32-2-4 	&496 	&107880 	 &33.32 &1.24 &22.18 &1.87 &15.55 &2.67 &11.69 &3.55\\
+\hline 
+keller4 	&171 	&9435 			 & &P2   & &P4   & &P8   & &P16  \\
+keller5 	&776 	&225990 		 &120.91 &1.64 &71.14 &2.79 &44.57 &4.45 &30.52 &6.49\\
+\hline
+hamming10-2 	&1024 	&518656 	 &503.04 &1.81 &277.57 &3.29 &159.88 &5.7 &97.85 &9.32\\
+hamming8-2 	    &256 	&31616 	     &09.89  &1.15 &06.54  &1.74 &04.85 &2.35 &03.81 &2.99\\
+\hline
+san200\_0.7\_1 	&200    &13930 	     &4.20 &1.01 &2.84 &1.49 &2.40 &1.77 &2.07 &2.04\\
+san200\_0.9\_1 	&200 	&17910 	     &5.62 &1.07 &3.73 &1.61 &3.01 &1.99 &2.50 &2.39\\
+san200\_0.9\_2 	&200 	&17910 	     &5.52 &1.04 &3.69 &1.56 &2.96 &1.94 &2.48 &2.32\\
+san200\_0.9\_3 	&200 	&17910 	     &5.39 &1.02 &3.66 &1.50 &2.98 &1.84 &2.41 &2.29\\
+san400\_0.5\_1 	&400 	&39900 	     &11.66 &1.14 &07.73 &1.72 &06.07 &2.19 &04.89 &2.71\\
+san400\_0.9\_1 	&400 	&71820 	     &21.25 &1.12 &14.05 &1.70 &10.25 &2.33 &07.95 &3.00\\
+\hline
+sanr200\_0.7 	&200 	&13868 	     &4.09 &1.03 &2.84 &1.49 &2.4 &1.76 &2.07 &2.04\\
+sanr400\_0.5 	&400 	&39984 	     &11.92 &1.09 &8.11 &1.61 &6.17 &2.11 &5.02 &2.59\\
+san1000 	    &1000 	&250500 	 &127.43 &1.65 &73.77 &2.85 &46.96 &4.48 &32.44 &6.49\\
+\hline
+brock200\_1 	&200 	&14834 	     &4.27 &1.06 &3.01 &1.51 &2.57 &1.77 &2.17 &2.09\\
+brock400\_1 	&400 	&59723 	     &17.76 &1.11 &11.7 &1.69 &8.73 &2.27 &6.8 &2.91\\
+brock800\_1 	&800 	&207505 	 &102.51 &1.63 &61.14 &2.73 &39.24 &4.25 &27.17 &6.14\\
+\hline
+p\_hat300\_1 	&300 	&10933       &3.99 &1.1 &2.81 &1.56 &2.43 &1.8 &2.17 &2.02\\
+p\_hat300\_2 	&300 	&21928       &7.42 &1.14 &4.88 &1.73 &3.83 &2.2 &3.22 &2.62\\
+p\_hat300\_3 	&300 	&33390       &9.56 &1.14 &6.61 &1.64 &5.13 &2.12 &4.14 &2.62\\
+p\_hat500\_1 	&500 	&31569       &10.74 &1.2 &7.36 &1.76 &5.9 &2.19 &4.82 &2.68\\
+p\_hat500\_2 	&500 	&62946       &21.86 &1.23 &14.08 &1.91 &10.18 &2.64 &7.91 &3.39\\
+p\_hat700\_1 	&700 	&60999       &22.03 &1.26 &14.45 &1.92 &10.83 &2.56 &8.59 &3.23\\
+p\_hat1000\_1 	&1000 	&122253      &49.35 &1.37& 30.56 &2.22 &21.72 &3.12 &16.16 &4.2\\
+p\_hat1500\_1 	&1500 	&284923      &209.25 &1.75 &117.98 &3.1 &72.6 &5.04 &47.47 &7.7\\
+\hline
+MANN\_a27 	&378 	&70551 	         &21.11 &1.19 &14.01 &1.8 &9.98 &2.52 &7.52 &3.35\\
+MANN\_a45 	&1035 	&533115 	     &474.11 &1.81 &258.94 &3.3 &152.74 &5.6 &94.87 &9.02\\
+\hline
+\multicolumn{9}{@{}l}{\tiny $^*$Results for 100 runs per graph.
+\qquad\qquad $^\dag$All times are in seconds.}\\
+\end{tabular}
+\end{center}
+\end{footnotesize}
+\end{table*}
+\linespread{1.3}
+
+
+\subsubsection{Distributed Implementation}
+
+
+%todo: provide a note that machines are different so hard to get accurate rate- however
+%the benchmark results are given.  
+%also could reduce the # of instances test so every implementations (result tables) are 
+%consistent
+
+The distributed implementation of ASMC was run on four Sun Blade 100 450MHz workstations.
+Due to time limitations we were able to run the algorithm only on a subset of the
+30 test graphs.  Also, we ran the algorithm 100 times for each graph.  The
+results are comparable to that of the sequential implementation.
+Table~\ref{tab:distributed} summarizes the results.
+
+
+
+
+
+
+
+\begin{table*}[h!]
+\caption{ASMC solution quality (distributed implementation)\label{tab:distributed}}
+\begin{footnotesize}
+\begin{center}
+\begin{tabular}{|l|c|c|c||c|cc||c|}
+\hline
+Graph 	& Vertices 	& Edges 	& Opt 	& ASMC          & ASMC 	        & (StdDev) & Avg  	\\ 
+        &  	        &  	        &  	& Best$^*$      &  Avg$^*$ 	&  	   &Time$^{*\dag}$       \\  
+\hline											            				       
+c-fat200-1 	& 200 	& 1534 		& 12 	& 12 	& 12.00         & (0.00) 	& 0.72     \\
+c-fat500-1  & 500  & 4459   & 14 & 14  & 14.00         & (0.00)  & 2.61     \\
+\hline
+johnson16-2-4 	& 120 	& 5460 		& 8 	& 8 	& 8.00 		& (0.00) 	& 1.37     \\
+\hline
+keller4 	& 171 	& 9435 		& 11 	& 11 	& 10.49 	& (0.64) 	& 3.21     \\
+\hline
+hamming8-2 	& 256 	& 31616 	& 128 	& 128 	& 127.26 	& (2.78) 	& 32.70    \\
+\hline
+san200\_0.7\_1 	& 200 	& 13930 	& 30 	& 30 	& 17.16 	& (1.93) 	& 6.29     \\
+san200\_0.9\_1 	& 200 	& 17910 	& 70 	& 48 	& 47.09 	& (0.40) 	& 10.64     \\
+\hline
+sanr200\_0.7 	& 200 	& 13868 	& 18 	& 17 	& 15.44 	& (0.69) 	& 6.22     \\
+\hline
+brock200\_1 	& 200 	& 14834 	& 21 	& 20 	& 18.49 	& (0.64) 	& 7.21     \\
+\hline
+p\_hat300\_1 	& 300 	& 10933 	& 8 	& 8 	& 8.00 		& (0.00) 	& 4.52     \\
+p\_hat500\_1 	& 500 	& 31569 	& 9 	& 9 	& 8.11 		& (0.31) 	& 33.60    \\
+\hline
+\multicolumn{8}{@{}l}{\tiny $^*$Results for 100 runs per graph.
+\qquad\qquad $^\dag$All times are in seconds.}\\
+%%\multicolumn{6}{@{}l}{\tiny $^\dag$All times are in seconds.}\\
+\end{tabular}
+\end{center}
+\end{footnotesize}
+\end{table*}
+
+
+
+
+%%%%
+\begin{table}[ht!]
+\caption{ASMC$_d$ results (Distributed implementation)\label{tab:distributed1}}
+\begin{footnotesize}
+\begin{center}
+\begin{tabular}{|l||c|cc|c||c|cc|c|}
+\hline
+& \multicolumn{4}{|c||}{ASMC$_s$} & \multicolumn{4}{|c|}{ASMC$_d$}\\
+Graph 	        & Sol      & Sol   & (StdDev)   & Time  	   & Sol      &Sol   & (StdDev)   & Time  	           \\ 
+                & Best$^*$ &  Avg$^*$   &  	    &Avg$^{*\dag}$   & Best$^*$  &  Avg$^*$   &  	    &Avg$^{*\dag}$       \\  
+\hline				       		                                    				       
+c-fat200-1 	    & 12       & 12.00     & (0.00) 	& 0.72         & 12 		& 12.00     & (0.00) 	& 0.72         \\
+c-fat500-1      & 14       & 14.00     & (0.00)    & 2.61         & 14         & 14.00     & (0.00)    & 2.61         \\
+\hline                                                              
+johnson16-2-4   & 8        & 8.00 		& (0.00) 	& 1.37         & 8 	        & 8.00 		& (0.00) 	& 1.37          \\
+\hline                                                              
+keller4 	    & 11       & 10.49 	& (0.64) 	& 3.21         & 11 		& 10.49 	& (0.64) 	& 3.21         \\
+\hline                                                                                                            
+hamming8-2 	    & 128      & 127.26 	& (2.78) 	& 32.70        & 128 	 	& 127.26 	& (2.78) 	& 32.70        \\
+\hline                                                                                                            
+san200\_0.7\_1 	& 30       & 17.16 	& (1.93) 	& 6.29         & 30 		& 17.16 	& (1.93) 	& 6.29         \\
+san200\_0.9\_1 	& 48       & 47.09 	& (0.40) 	& 10.64        & 48 		& 47.09 	& (0.40) 	& 10.64         \\
+\hline                                                                                                            
+sanr200\_0.7 	& 17       & 15.44 	& (0.69) 	& 6.22         & 17 		& 15.44 	& (0.69) 	& 6.22         \\
+\hline                                                                                                            
+brock200\_1 	& 20       & 18.49 	& (0.64) 	& 7.21         & 20 		& 18.49 	& (0.64) 	& 7.21         \\
+\hline                                                                                                            
+p\_hat300\_1 	& 8        & 8.00 		& (0.00) 	& 4.52         & 8 	        & 8.00 		& (0.00) 	& 4.52         \\
+p\_hat500\_1 	& 9        & 8.11 		& (0.31) 	& 33.60        & 9 	        & 8.11 		& (0.31) 	& 33.60        \\
+
+
+
+
+\hline
+%\multicolumn{8}{@{}l}{\tiny $^*$Results for 100 runs per graph.
+%\qquad\qquad $^\dag$All times are in seconds.}\\
+%%\multicolumn{6}{@{}l}{\tiny $^\dag$All times are in seconds.}\\
+\end{tabular}
+\end{center}
+\end{footnotesize}
+\end{table}
+
+
+\section{Acknowledgements}
+
+The authors would like to thank the anonymous referees for their valuable comments.
+
+\section{Conclusion}\label{conclusion}
+  
+In this paper we presented an ant-based algorithm that seems to perform well
+on a set of 119 DIMACS benchmark graphs.  This ant-based algorithm has not given ants
+the ability to leave pheromone which generally helps improve the performance
+of ant-based algorithms.  In limited experiments we found that in this
+particular algorithm, adding pheromone laying capability increases
+running time without providing visible or significant performance
+improvement. 
+
+Future work: hybrid of both , 
+
+%todo: say something although there are many other recent methods such as ref ref 
+%giving better results than ASMC, our purpose is not to compare Ant System with those
+%approaches but rather provide parallelization concepts
+%techniques to Ant System based algorithms.
+
+
+%todo: words to use: intuiations etc 
+%todo: install flyspell
+
+%todo: literatures ! 1) All the parallel stuffs 2) recent techniques for Max Clique (should be short) - 
+
+%todo: somehow have to describe the ideas that multicore: speed, multi machine: intelligence
+%todo: any other type of graph, visual stuffs that might help ?  See other *related* papers 
+
+\begin{thebibliography}{99} 
+
+\bibitem{ACCOV}
+J. Abril, F. Comellas, A. Cortes, J. Ozon and M. Vaquer,
+``A Multi-Agent System for Frequency Assignment in Cellular Radio
+Networks'',
+IEEE Transactions on Vehicular Technology,  49(5) September 2000, pp.
+1558--1564.
+
+
+\bibitem{BGS}
+M. Bellare, O. Goldreich and M. Sudan,
+``Free Bits, PCPs and Non-Approximability - Towards Tight Results'',
+SIAM J. Comp. 27, 1998, pp. 804--915.
+
+\bibitem{BK}
+A. Blum, D. Karger
+``An $O(n^{3/14})-$Coloring Algorithm for 3-Colorable Graphs'',
+{\it Information Processing Letters}, 61(1), January 1997. pp. 49--53.
+
+\bibitem{BDT}
+E. Bonabeau, M. Dorigo and G. Theraulaz,
+``Inspiration for Optimization from Social Insect Behavior'',
+Nature, Vol. 406, July 6, 2000, pp. 39--42.
+
+
+\bibitem{B}
+D. Brelaz,
+``New Methods to Color the Vertices of a Graph'',
+Communications of the ACM, 22(4),  April 1979, pp. 251--256.
+
+\bibitem{BP}
+T. N. Bui and C. Patel,
+``An Ant system Algorithm for Coloring Graphs'',
+{\it Computational Symposium on Graph Coloring and its Generalizations}, 
+COLOR02,
+Cornell University, September 2002.
+
+\bibitem{CS}
+M. Chiarandini, T. Stutzle,
+``An Application of Iterated Local Search to Graph Coloring Problem'',
+{\it Computational Symposium on Graph Coloring and its Generalizations}, 
+COLOR02,
+Cornell University, September 2002.
+
+
+\bibitem{CO}
+F. Comellas and J. Ozon,
+``Graph Coloring Algorithms for Assignment Problems in Radio Networks,''
+Applications of Neural Networks to Telecommunications 2, 1995, pp.
+49--56.
+
+
+\bibitem{CO2}
+F. Comellas and J. Ozon,
+``An Ant Algorithm for the Graph Coloring Problem,''
+ANTS'98 -- From Ant Colonies to Artificial Ants: First International 
+Workshop on Ant Colony Optimization, Brussels, Belgium, October 15-16, 1998.
+
+\bibitem{CLGA}
+C. Coritoru, H. Luchian, O. Gheorghies, A. Apetrei,
+``A New Genetic Graph Coloring Heuristic'',
+{\it Computational Symposium on Graph Coloring and its generalizations}, 
+COLOR02,
+Cornell University, September 2002.
+
+\bibitem{CH}
+D. Costa and A. Hertz,
+``Ants Can Colour Graphs,''
+Journal of Operational Research Society,  Vol. 48, 1997, pp. 295--305.
+
+\bibitem{CL}
+J. Culberson, F. Luo,
+``Exploring the k-colorable landscape with Iterated Greedy'',
+{\it Cliques, Coloring and Satisfiability -- Second DIMACS Implementation
+Challenge 1993}, American Mathematical Society, Volume 26 (1996), pp. 
+245--284.
+
+\bibitem{DD}
+M. Dorigo and G. Di Caro,
+``The Ant Colony Optimization Meta-Heuristic,''
+{\it New Ideas in Optimization}, McGraw-Hill, 1999, pp. 11--32.
+
+
+\bibitem{DG}
+M. Dorigo and L. Gambardella,
+``Ant Colony System: A Cooperative Learning Approach to the Traveling
+Salesman Problem,''
+IEEE Trans. on Evol. Computation, 1(1), 1997, pp. 53--66.
+
+\bibitem{FF}
+C. Fleurent, J. Ferland,
+``Genetic and Hybrid Algorithms for Graph Coloring'',
+{\it Annals of Operations Research}, Volume 63, 1996, pp. 437--461.
+
+\bibitem{GHZ}
+P. Galinier, A. Hertz, N. Zufferey,
+``Adaptive Memory Algorithms for Graph Coloring'',
+{\it Computational Symposium on Graph Coloring and its Generalizations}, 
+COLOR02,
+Cornell University, September 2002.
+
+\bibitem{GH}
+P. Galinier ad J. Hao,
+``Hybrid Evolutionary Algorithms for Graph Coloring'',
+{\it Journal of Combinatorial Optimization}, October 1998.
+
+\bibitem{GD}
+L. M. Gambardella and  M. Dorigo,
+``An Ant Colony System Hybridized with a New Local Search for the Sequential
+Ordering Problem,''
+INFORMS Journal on Computing, 12(3), Summer 2000.
+
+
+\bibitem{GPR}
+F. Glover, M.Parker, J. Ryan,
+``Coloring by Tabu Branch and Bound'',
+{\it Cliques, Coloring and Satisfiability -- Second DIMACS Implementation
+Challenge 1993}, American Mathematical Society, Volume 26 (1996), pp. 
+285--307.
+
+\bibitem{GOM}
+C. Gomes, D. Shmoys,
+``Completing Quasigroups or Latin Squares: A Structured Graph Coloring
+Problem",
+{\it Computational Symposium on Graph Coloring and its generalizations}, 
+COLOR02,
+Cornell University, September 2002.
+
+\bibitem{HWe}
+A. Hertz, D. Werra,
+``Using Tabu Search Techniques for Graph Coloring'',
+{\it Computing}, Volume 39, 1987, pp. 345--351.
+
+\bibitem{H}
+M. M. Halld\'orsson,
+``A Still Better Performance Guarantee for Approximate Graph Coloring'',
+Information Processing Letters, 45, 1993, pp. 19--23.
+
+
+\bibitem{JT}
+T. R. Jensen and B. Toft,
+{\it Graph Coloring Problems,} Wiley-Insterscience Series in Discrete
+Mathematics and Optimization, 1995.
+
+
+\bibitem{JAMS}
+D. Johnson, C. Aragon, L. McGeoch and C. Schevon,
+``Optimization by Simulated Annealing: An Experimental Evaluation; Part II,
+Graph Coloring and Number Partitioning,''  
+Operations Research,  39(3), May--June 1991, pp. 378--406.
+
+
+\bibitem{JTr}
+D. S. Johnson and M. A. Trick (Editors),
+{\it Cliques, Coloring and Satisfiability -- Second DIMACS Implementation
+Challenge 1993,}  
+DIMACS Series in Discrete Mathematics and Theoretical Computer Science,
+American Mathematical Society, Volume 26 (1996).
+
+\bibitem{LC}
+G. Lewandowski, A. Condon,
+``Experiments with Parallel Graph Coloring Heuristics and Applications of
+Graph Coloring'',
+{\it Cliques, Coloring and Satisfiability -- Second DIMACS Implementation
+Challenge 1993}, American Mathematical Society, Volume 26 (1996), pp. 
+309-334.
+
+\bibitem{L}
+F. T. Leighton,
+``A Graph Coloring Algorithm for Large Scheduling Problems",
+Journal of Research of the National Bureau of Standards, 84(6), 1979, 
+pp. 489--506.
+
+\bibitem{MC}
+V. Maniezzo and A. Carbonaro,
+``Ant Colony Optimization: An Overview'', {\it Essays and Surveys in
+Metaheuristics}, C. Ribeiro editor, Kluwer Academic Publishers, 2001, pp.
+21--44.
+
+
+\bibitem{MN}
+K. Mizuno, S. Nishihara,
+``Toward Ordered Generation of Exceptionally Hard Instance for Graph
+3-Colorability'',
+Computational Symposium on Graph Coloring and its Generalizations, 
+COLOR02, Cornell University, September 2002.
+
+\bibitem{Mor}
+C. Morgenstern,
+``Distributed Coloration Neighborhood Search'',
+{\it Cliques, Coloring and Satisfiability -- Second DIMACS Implementation
+Challenge 1993}, American Mathematical Society, Volume 26 (1996), pp. 
+335--358.
+
+\bibitem{PS}
+V. Phan, S. Skiena,
+``Coloring Graphs with a General Heuristic Search Engine''
+Computational Symposium on Graph Coloring and its Generalizations, 
+COLOR02, September 2002.
+
+
+\bibitem{WPO}
+T. White, B. Pagurek, F. Oppacher,
+``ASGA: Improving the Ant System by Integration with Genetic Algorithms'',
+Proceedings of the 3rd Conference on Genetic Programming (GP/SGA 98), 
+July
+1998, pp. 610--617.
+
+
+\end{thebibliography}
+
+
+
+%\null
+
+
+\begin{figure}[th!]
+
+\hrule
+
+\medskip
+
+The following data was obtained after DFMAX was recompiled on the
+machine that we tested our algorithm.
+
+\begin{tabular}{@{\qquad\qquad}l}
+DFMAX(r500.5.b)\\
+5.67 (user)\quad      0.00 (sys)\quad      6.00 (real)\\
+Best: 345 204 148 480 16 336 76 223 260 403 141 382 289\\
+\end{tabular}
+\medskip
+\hrule
+\medskip
+\caption{Machine Benchmark\label{fig:benchmark}} 
+\end{figure}
+
+
+
+  
+
+\end{document}
+
+
+
+%\usepackage{fancyvrb} 
+%\usepackage[ruled,vlined]{algorithm2e}
