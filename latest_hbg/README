@@ -1,0 +1,52 @@
+Jul21.bk !
+
+*this*
+- Contains updates to parallelizing the localoptimization part, not to improve speed to hopefully can improve results, mainly to make processor not idling.
+- Dr. Bui suggests to do quitting criteria (e.g if after # of stages and no help, stop)
+- Dr. Bui suggests to see if instead of taking top 20%,  take 20% PROPORTIONALLY (should be easy,  i.e.g find the best, based on rand()<80 , then do it , else skip to next
+- Try to increase the factor * numAnts score then use numAnts--
+- Try to increase # of ants , jack up stuffs change params and see if can match Rizzo's ones on san200*
+- Investigate on if AntShufflings helped Rizzo's on san200
+- SEe if can put gorClique in parallelizing, so that each processor choose a different one to grow
+- Try to mangling up the Initial Greedy Clique
+- Try on different graphs (DIMACS) , big ones , to see the speedup 
+* CLEAN UP the mVertices = new ()
+- discovered a bug (converting int to double etc)
+- try take out the   /(ANT_VER_EDGE*AntMultipler*5) etc, idea is to make the numberAnts and pheromone to be distinguished, otherwise it's too small.  NO, don't do this, doing this will make it max out at MAX_SCORE.  think of other methods
+
+>  got a 57  here,  great improvement ../../scripts/rf.out t//1121882879/san200_0.9_2.clq.b.log
+
+
+
+
+---------------
+
+
+Remove NumAnts--  ,  everything else should be the same as Jun26_2ndOMP 
+
+
+Some added parts after Jun26
+
+- Put 2 openmp parallel loop (disableBacktracing) into one main one
+- Added RIZZO flag so can compare on the fly differences between 2 models
+
+Jul12
+
+- Main part added was testing to see the difference in pheromone (TEST_EDGES flag) in two type of runs on random edges
+
+
+Jul13
+- Added OMP for SetScore   , flag PSCORE
+
+
+
+
+-------
+FLAG
+PSCORE :  OMP for setScore
+PEDGESCAN: OMP for edgeScan in ants operations
+PLOCAL: OMP for local 
+RIZZO: using Rizzo's ant movements
+
+icpc  main.cc  -o out/par.r  -openmp -DTEST_EDGES -DRIZZO -DD1
+icpc  main.cc  -o out/par.t  -openmp -DTEST_EDGES  -DD1   #note that D1 is the flag to run on random number output
