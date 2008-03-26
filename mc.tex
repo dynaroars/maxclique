@@ -1,48 +1,3 @@
-%the AMSC best shows the best solution found from our ASMC algorithms.  We note that the main objective of this paper is not finding the best algorithm for the MAX-clique problem but rather to apply parallism to an existing AS algorithm. 
-
-%TODO: find out about socket communcation in UNIX
-%todo:
-%bibs for literatures
-%openmp existing algirthm
-%rewrite the Ant System vs ACO (use Rizzo's thesis)
-%proof read the algorithm  & conclusion part, make sure all portions are distributed equally (e.g., alg should take the most part).  Any thing else to add to the distributed one ?
-%clean up the expt results, explain all times are in sec etc.
-%too many *Bui* bibs for Ant System.  can say something like Sekar's Maste theeiss or something.
-
-
-
-%abstract intro: p1
-%background: p2-3
-%algs: p4-8 %The distributed part: put some details such as using gprof balh blah balh but don't go into too details - just as how I did with the seq part, evaporation , adaptive behavior and all ..
-%exp results & tables: p9-12
-%con: 12
-%ref: 13
-
-
-%todo: 4/19 (Wed) - intro & conclusion, 4/20 (Thurs): background (parallel part) - also try to cover the sequ sect in ch3,  4/21 (Fri): ch3: overall forewords of both shared/distributed, then in details about shared mem implementation  4/22 (Sat): ch3 rewrite Rizzo's dist discussion & experiment results.  4/23 (Sun): review, review, review ... draft.  KEEP IT UNDER 12 PAGES !!!!
-
-%todo: put in the results of my algorithm in the sequential section, mention we have redesign Bui's algorithm and gain better results.  But stress that this paper is not about result of AMSC seq
-
-%todo: table probably shorten it, use the base ones - for openmp includes several big ones to demo.  The rest can be found on supporting material page.
-
-
-%todo: urgent: shorten the length so ppl don't question much about the details - can provide a supporting material website.
-%todo: openmp, parallel the local opt and greedy techniques.
-%todo: check this file, even though doesn't have keller5 info but based on 2 processors, I can estimate.
-%file:///Users/thanhvu/Documents/School/PSU/COMP600_Thesis/Clique/results
-
-%todo: urgent: need Existing algorithms
-
-% In limited experience, we found that adding pheromone to this 
-%particular algorithm takes more time and gives no visible quality improvement. 
-%Other techniques such as tabu lists and local optimization are also included to 
-%help the agents in ﬁnding good solutions. 
-
-
-%TODO: need to do some literature review, show some recent works. How is mine different (probably I can ignore this because this is for my *own* max clique algorithm.  In this case then go back to "provide the incentives for many recent studies [refs] on Ant based algorithm in concurrent".
-
-%TODO: kill the references!!!
-
 \documentclass[11pt]{article} 
 \usepackage[dvips]{graphicx} 
 %\usepackage[bf]{caption2} 
@@ -56,79 +11,67 @@
 \setlength{\topmargin}{0in} 
 \setlength{\headsep}{0in}
 
-
-
-
 \newcommand{\myfont}[1]{{\usefont{OT1}{cmss}{m}{it}#1}}
   
 \begin{document}  
 
 \title{Implementing the Max-Clique Ant System Algorithm in Parallel Environments} 
-\author{ 
-ThanhVu Nguyen\\ 
-Computer Science Program\\ 
-Penn State Harrisburg\\ 
-Middletown, PA 17057\\ 
+\author{
+Authors\\
 }  
 \maketitle  
-
+% Computer Science Program\\ 
+% Penn State Harrisburg\\ 
+% Middletown, PA 17057\\
+ 
 
 \begin{abstract}
-In this paper we extend the Ant System algorithm for the Max Clique problem~\cite{BR} into two main parallel environments, namely shared and distributed memory. Our parallel techniques provide noticeable improvements to the algorithm running time while maintain comparable solution quality to that of the sequential version.  This shows that concurrent computing is an ideal platform to work with large optimization problems.
+In this paper we re-implement the Ant System algorithm for the Max Clique problem~\cite{BR} in the shared and distributed parallel environments. Our parallel versions provide noticeable improvements to the algorithm running time while maintain comparable solution quality to that of the sequential version.  This shows Ant System based algorithms are promising candidates to parallel computing.
 \end{abstract}
 
 
 \section{Introduction}\label{intro}
 
 
-Many real world applications bear resemblances to  $\cal NP$-hard combinatorial optimization problems.  Hence, unless $\cal P = NP$, most likely they have no algorithms that give exact or even good approximate solutions in acceptable time.  Alternative strategies such as ant based metaheuristic  have been shown to be very successful in these situations, even though they give no guarantees about solution quality.  However, in many cases ant based approaches still require large computing resources and time, especially when the problem size increases.  Furthermore, ants inspired techniques attempt to imitate the social work of insects in nature, which inherently includes their concurrent operations.  These reasons provide incentives for studies about ant based algorithms in parallel environments.
+Many real world applications bear resemblances to  $\cal NP$-hard combinatorial optimization problems.  Hence, unless $\cal P = NP$, they most likely have no algorithms that give exact or even good approximate solutions in acceptable time.  Alternative strategies such as ant based heuristics  have been shown to be very successful in these situations, even though they give no guarantees about solution quality.  However, in many cases ant based approaches still require large computing resources and time, especially when the problem size increases.  Furthermore, algorithms inspired by the social work of ants should  include their inherent synchronous operations.  These reasons provide incentives for studies about ant based algorithms in parallel environments.
 
-In previous paper, we used a variant of ant based algorithms called \textit{Ant System} to solve the \textit{Max-Clique} problem~\cite{BR}. We also offered brief intuitions on a possible implementation of the algorithm in distributed computing.  In this paper, we describe the process of transforming the sequential algorithm into two popular parallel architectures, namely the shared and distributed memory models. We hope these ideas serve as proofs of concept that parallel programming is ideal for algorithms inspired by social insects.
+In~\cite{BR}, Bui et al. used a variant of ant based algorithms called \textit{Ant System} to solve the \textit{Max-Clique} problem. Their conclusion offered brief intuitions on an implementation of the algorithm in distributed computing.  In this paper, we describe the process of transforming their sequential algorithm into two popular parallel architectures, namely the shared and distributed memory models. We hope these ideas serve as proofs of concept that parallel programming is ideal for algorithms inspired by social insects. %todo check et al
 
 
-The rest of the paper is organized as follows. In Section~\ref{background} we give preliminaries on ant based algorithms, the clique problem, and an overview of parallel computing.  We present the sequential and parallel Ant System algorithms for Max-Clique in Section~\ref{algorithm} and show their experimental results in Section~\ref{results}.  Finally, our conclusion and suggestions for future research are given in Section~\ref{conclusion}.
+The rest of the paper is organized as follows. In Section~\ref{background} we give preliminaries on ant based algorithms, the clique problem, and an overview of parallel computing.  We present the sequential and parallel Ant System algorithms for Max-Clique in Section~\ref{algorithm} and show our experimental results in Section~\ref{results}.  Finally, our conclusion and suggestions for future work are given in Section~\ref{conclusion}.
 
 %, and the two parallel environments considered in this work
 
 \section{Background}\label{background} 
 \subsection{The \textit{Max-Clique} Problem}
 
-A \textit{clique} in an undirected graph $G$ is a complete subgraph of $G$ in which there's an edge between any two vertices in the subgraph.  The size of the clique is the number of vertices it owns. The  Max-Clique optimization problem asks for the \textit{largest} clique in a graph.  Max-Clique is very useful in solving real-life situations such as finding good codes, identifying faulty processors in multiprocessor systems, and finding counterexamples to Keller's conjecture in geometry \cite{BP2}\cite{Sloane}\cite{SMW}\cite{Keller}\cite{LS}.
+A \textit{clique} in an undirected graph $G$ is a complete subgraph of $G$ in which there's an edge between any two vertices in the subgraph.  The size of the clique is the number of vertices it owns. The  Max-Clique optimization problem asks for the \textit{largest} clique in a graph.  Max-Clique is very useful in solving real-life situations such as detecting good codes, identifying faulty processors in multiprocessor systems, and finding counterexamples to Keller's conjecture in geometry~\cite{BP2}\cite{Sloane}\cite{SMW}\cite{Keller}\cite{LS}.
 
-It has been shown that even approximation algorithms for Max-Clique in polynomial time are impractical as the margin of error can grow quite high~\cite{Hastad}. Therefore, heuristics such as ant based algorithms are often used to find good solutions in a resonable amount of time.
-
-%It has been shown that even finding good approximation to instance of Max-Clique in polynomial time are impractical as the margin of error can grow quite high
-
-%The Max-Clique problem belongs to the $\cal NP$-hard class and hence, exact polynomial time solvers for them are not expected to exist. Likewise, existing approximation algorithms for the problem in polynomial time are impractical as the margin of error can grow quite high. Therefore, heuristics such as ant based algorithms are needed to find good solutions in a resonable amount of time.
-
+It has been shown that even approximation algorithms for Max-Clique in polynomial time are impractical as the margin of error can grow quite high~\cite{Hastad}. Therefore, heuristics such as ant based algorithms are often used to find good solutions in a reasonable amount of time.
 
 \subsection{Ant based Algorithms}\label{max_clique} 
 
-%todo: reduce these 3 paragraphs about AS to 2
-%ACO is the among the first design of Ant Based heuristic algorithms that imitate 
-%traditional ant based algorithm refer to ACO from Dorigo.  It is a heuristic techniques ...  
 
-\textit{Ant Colony Optimization} (ACO) is a popular metaheuristic technique from ant based algorithms that imitates the collective behavior of ants~\cite{DD}. Ants in a colony communicate among themselves through pheromone and they are able to find the shortest path to a food source by marking their trails through this chemical substance~\cite{BDT, DG}. Ants lay more or less pheromone according to how they perceive their conditions at a given time. Other ants arriving at a similar situation consider the amount of pheromone that has been laid, and use this to make informed decisions. ACO has been used to solve problems like traveling salesman, quadratic assignment, routing, knapsack, among others \cite{DG, TAIL, MC}.
+\textit{Ant Colony Optimization} (ACO) is an eminent ant inspired approach that imitates the collective behavior of ants to solve problems~\cite{DD}. Ants in a colony communicate among themselves through pheromone and they are able to find the shortest path to a food source by marking their trails through this chemical substance~\cite{BDT}. Ants lay more or less pheromone according to how they perceive their conditions at a given time. Other ants arriving at a similar situation consider the amount of pheromone that has been laid, and use this to make informed decisions. ACO has been used to solve problems like traveling salesman, quadratic assignment, routing, knapsack, among others~\cite{DG, TAIL, MC}.
 
-\textit{Ant System} (AS), also inspired by the problem solving ability of ants, has been effectively applied to the bisection, $k$-cardinality tree, and degree-constrained spanning tree problems \cite{BS2, BS1, BZ}.  AS differs from ACO mainly in how the insects are used. In ACO, each ant produces a solution to the problem. The initial ant solves the problem almost purely stochastically. The subsequent ants use the information provided by the previous ants to produce better solutions. In AS, ants do not attempt to solve the problem individually. The heuristic decisions made by the ants are based only on local neighborhood information. The solution to the problem is represented by the state of all ants in the colony captured in a snapshot of time. Because the ants are concerned with only a local portion of the problem, they need to know less global information than ants in an ACO algorithm. Moreover, since the solutions are obtained by groups of ants, AS employ lots more ants than ACO.   These reasons make AS algorithms very amenable to parallel processing. 
+\textit{Ant System} (AS) is another ant based algorithm that has been effectively applied to graph like problems such as the bisection, $k$-cardinality tree, and degree-constrained spanning tree problems~\cite{BS2, BS1, BZ}.  AS differs from ACO mainly in how the ants are used. Each ant produces a solution to the problem in ACO. The initial ant solves the problem almost purely stochastically. The subsequent ants use the information provided by the previous ants to produce better solutions. In AS, ants make heuristic decisions based only on local neighborhood information and do not attempt to solve the problem individually. The solution to the problem is represented by the state of all ants in the colony captured in a snapshot of time. Because the ants are concerned with only a local portion of the problem, they need to know less global information than ants in an ACO algorithm. Moreover, since the solutions are obtained by groups of ants, AS employs lots more ants than ACO. These reasons make AS algorithms very amenable to parallel processing. 
 
 
 \subsection{The Shared and Distributed Memory Models}
 
 
-Shared and distributed memory are two prevalent inter-processor communication systems in parallel computing~\cite{PH}. Shared memory (SM) system such as symmetric multiprocessor (SMP) allows a collection of identical processors to share access to common memory, typically via a bus.  Distributed memory (DM) system such as cluster composes of multiple standalone machines each with its own processor and memory set. These machines are usually assymmetric and communicate with one another by means of passing messages though a high-speed network~\cite{cluster}.  POSIX Threads and OpenMP(MultiProcessing) are two standard shared memory APIs and Message Passing Interface (MPI) is the traditional API in message passing system~\cite{MPI,OpenMP}.
+Shared and distributed memory are two prevalent inter-processor communication systems in parallel computing~\cite{PH}. Systems using shared memory (SM) such as symmetric multiprocessor (SMP) allow a collection of identical processors to share access to common memory, typically via a bus.  Distributed memory (DM) systems such as Beowulf clusters compose of multiple standalone machines each with its own processor and memory set. These machines are usually asymmetric and communicate with one another by means of passing messages though a high-speed network~\cite{cluster}.  POSIX Threads and OpenMP (MultiProcessing) are two standard shared memory API's and Message Passing Interface (MPI) is the traditional API in message passing system~\cite{MPI,OpenMP}.
 
 
-Both shared-memory multiprocessors and distributed-memory processors have advantages and disadvantages. Porting a serial program to SM using API's such as Open MP often just requires adding parallelism to appropriate sections of the sequential code.  However, race conditions, deadlocks, and other problems associated with shared access might occur.  Writing message passing programs in DM is more complicated; typically involves designing efficient algorithms to divide tasks among processors with separate memory spaces.  Moreover, processes coordinations, data synchronizations, and especially the latency of the network connecting the DM processors are common challenges.  The major advantage of DM over SM is scalability.  Adding more processors in a distributed environment is as simple as attaching new computers to the current environment, whereas doing so in an SM increases the bus traffic on the system, slowing down memory access time, and delaying program execution~\cite{}.
+Both shared-memory multiprocessors and distributed-memory processors have advantages and disadvantages. Porting a serial program to SM using API's such as OpenMP often just requires adding parallelism to appropriate sections of the sequential code.  However, race conditions, deadlocks, and other problems associated with shared access might occur.  Writing message passing programs in DM is more complicated; typically involves designing efficient algorithms to divide tasks among processors with separate memory spaces.  Moreover, processes coordinations, data synchronizations, and especially the latency of the network connecting the DM processors are common challenges.  The major advantage of DM over SM is scalability.  Adding more processors in a distributed environment is as simple as attaching new computers to the current environment, whereas doing so in shared memory setting increases the bus traffic on the system, slowing down memory access time, and delaying program execution~\cite{}.
 
 \subsubsection{Previous Work}
-%moreref for these models
 
-Existing parallel ant algorithms in the literature often belong to the models of parallel ants, parallel ant colonies, or hybridization of various parallel techniques~\cite{TRFR,RL}.  In parallel ant, each ant occupies a separate processor and sends pheromone update to others at each step of the algorithm. A colony of ants is housed by a processor in the parallel ant colonies model and the program periodically broadcasts the pheromone structure from the best performing colony to others.  These models are often coupled with other parallel techniques. For instance, at the end of each algorithm the ants examine the available solutions elements; these expensive and independent evaluations can be divided equally to the available processors for parallel processing.
+Existing parallel ant algorithms often fall under the classes of parallel ants, parallel ant colonies, or hybridization of various parallel techniques~\cite{TRFR,RL,CR,B1,MRS,DHKLR,Stutzle,MBSD}.  In parallel ant, each ant occupies a separate processor and sends pheromone update to others at each step of the algorithm. A colony of ants is housed by a processor in the parallel ant colonies model and the program periodically broadcasts the pheromone structure from the best performing colony to others.  The hybrid model suggests combining parallel ant or parallel ant colonies with other parallel techniques. For instance, at the end of each algorithm the ants examine the available solutions elements; these expensive and independent evaluations can be divided equally to the available processors for parallel processing.
 
-Another technique implemented with OpenMP creates multiple data structures (e.g., matrix storing the updating values of pheromone trail) and assigns each to a thread (processor)~\cite{PKGG}.  These threads work on their assigned data structures concurrently and merge them together when needed to access all the values.
+An OpenMP implemented model proposed creating multiple data structures (e.g., solution trees,  pheromone matrix) and assigning each to a thread (processor)~\cite{PKGG}.  These threads work independently on their assigned data structures and merge them together when needed.  However there are potential issues with managing data structures with dynamically allocated values (e.g., insert and delete nodes from trees).
 
-With the exception of~\cite{PKGG}, these approaches assume the more popular distributed memory model rather than the shared memory one. In addition, their studies are based on the traditional Ant Colony Optimization model.
+With the exception of~\cite{PKGG}, the above approaches assume the more popular distributed memory model rather than the shared memory one. In addition, mainly Ant Colony Optimization based algorithms are used in these studies.
 
 
 
@@ -178,13 +121,13 @@ With the exception of~\cite{PKGG}, these approaches assume the more popular dist
 
 The main idea of the algorithm given in Figure~\ref{fig:asmc_seq} is as follows.  Ants are distributed on the graph vertices.  Each ant follows the same set of rules to move from vertex to vertex along the edges of the graph.  The rules are designed to encourage ants to aggregate on sets of vertices that are highly connected.  These highly connected regions of the graph then serve as candidate sets of vertices from which we can construct cliques.
 
-The algorithm starts with a \textit{greedy-based} algorithm to quickly find a clique for the ants to start with.  A large fraction of the ants are then distributed at random on vertices of the clique.  The algorithm then goes through a number of states, each state in turn consists a number of cycles and at the end of which a clique is constructed. In each cycle a fraction of the ants are selected to move and they do so with certain probability.  Their destinations are determined by various factors such as pheromone and the structure of the neighborhood around the ants.  As an ant traverses an edge of the graph it also puts down a certain amount of pheromone on that edge.  To allow for more exploration and possible escape from local optima, pheromone evaporates over time.  In addition to using pheromone as a means of communication, ants in our system also use their positions to communicate.  For example, a high degree vertex or one currently occupied by a large number of ants is more attractive to an ant to go to. At the end of each stage, the algorithm performs a \textit{local optimization} technique which constructs a clique based on the current configuration of the ants. A small portion of ants is then shuffled around the graph before moving on to the next stage. After finishing all stages, the algorithm returns the largest clique found in all stages. %todo: shorten the part about ant movements
+The algorithm starts with a \textit{greedy-based} algorithm to quickly find a clique for the ants to start with.  A large fraction of the ants are then distributed at random on vertices of the clique.  The algorithm then goes through a number of states, each state in turn consists a number of cycles and at the end of which a clique is constructed. In each cycle a fraction of the ants are selected to move and they do so with certain probability.  Their destinations are determined by various factors such as pheromone concentration and structure of the neighborhood around the ants.  As an ant traverses an edge of the graph it also puts down a certain amount of pheromone on that edge.  To allow for more exploration and possible escape from local optima, pheromone evaporates over time.  In addition to using pheromone as a means of communication, ants in our system also use their positions to communicate.  For example, a vertex currently occupied by a large number of ants is more attractive to an ant to go to. At the end of each stage, the algorithm performs a \textit{local optimization} technique which constructs a clique based on the current configuration of the ants. A small portion of ants is then shuffled around the graph before moving on to the next stage. After finishing all stages, the algorithm returns the largest clique found in all stages. %todo: shorten the part about ant movements
 
 
-Techniques such as pheromone evaporation and ants shuffling are used in the algorithm to mitigate problems caused by premature convergences and local optima traps. Moreover, ants in ASMC are given adaptive behaviors to encourage a gradual transformation from exploration in the beginning to exploitation near the end. In early stages, young ants are more active and rely less on pheromone and more on the structure of the graph.  As the algorithm progresses, ants get older and are less likely to move and they make more use of pheromone in determining their movement.
+Techniques such as pheromone evaporation and ants shuffle are used mitigate problems caused by premature convergences and local optima traps. Moreover, adaptive behaviors are given to ants to encourage a gradual transformation from exploration in the beginning to exploitation near the end. In early stages, young ants are more active and rely less on pheromone and more on the structure of the graph.  As the algorithm progresses, ants get older and are less likely to move and they make more use of pheromone in determining their movement.
 %todo: shorten
 
-More detailed descriptions of each component in ASMC can be found in~\cite{BR}.
+More detailed descriptions of each component in ASMC can be found in~\cite{BR}. We note even though the steps given here are for the \textit{clique} problem, most ideas are general and applicable to other Ant System based algorithms. 
 
 \subsection{The Shared Memory Implementation (ASMC$_{SM}$)}\label{ASMC_sm}
 
@@ -229,28 +172,23 @@ More detailed descriptions of each component in ASMC can be found in~\cite{BR}.
   \linespread{1.3}  
 \end{center}
 
-The common programming paradigm for shared memory architecture is the multithread \textit{fork-join} model. A single \textit{Master} thread is created when the program starts, executes sequentially, and expands into multiple \textit{Slave} threads when parallelization is requested. These threads work concurrently through the parallel region then merge back to the single master thread when done with the parallel section.
+The common programming paradigm for shared memory architecture is the multithreaded \textit{fork-join} model. A single \textit{Master} thread is created when the program starts, executes sequentially, and expands into multiple \textit{Slave} threads when parallelism is requested. These threads work concurrently through the parallel region then merge back to the single master thread when done with the parallel region.
 
-To use the \textit{fork-join} model, parallel regions from the sequential code need to be specified. Sections in ASMC that are efficient and safe for parallelism, i.e., reducing the execution time while not degrading the solution quality, make good candidates. The \textit{stage} and \textit{cycle} loops do not fit these criteria since each stage requires configurations from previous stage such as locations of ants and pheromone info and per time cycle, an ant can only perform an action (movement).  We then designate the \textit{ant} section as the main parallel regions as concurrent processing on this area does not affect the quality of the results.  Moreover, this part consumes more than half of the total processing time in AMSC~\footnote{The GNU profile utility \textit{grof} was used to identy time consuming operations in our program.}. AS algorithms often use a much larger ant population than traditional ACO; in ASMC, the size of the ant colony is approximately six times the number of vertices from the input graph.
+To use the \textit{fork-join} model, parallel regions from the sequential code need to be specified. Sections in ASMC that are efficient and safe for parallelism, i.e., reducing the execution time while not degrading the solution quality, make good candidates. The \textit{stage} and \textit{cycle} loops do not fit these criteria since each stage requires information from previous stage and an ant can only perform an action (movement) per time cycle.  We then designate the \textit{ant} section as the main parallel regions since parallelizing this part does not affect the quality of the results.  Moreover, the size of the ant colony is approximately six times the number of vertices of the input graph (AS algorithms often use a much larger ant population than traditional ACO).  Consequently, the work of the ants consumes more than half of the total time execution in ASMC~\footnote{The GNU profile utility \textit{grof} was used to evaluate the complexity of our program.}.
 
-In each cycle, an ant determines where to move and moves there.  These activities are expensive since the ant has to examine the surrounding neighborhood to decide its next destination, deposits pheromone on the way, and updates its new position.  In the sequential version, the actions of an ant have influences over the decisions of the other ants, even though all occur in the same time cycle. We redesign this part by separating it into two operations and parallelize them both as illustrated in Figure~\ref{fig:par_ops}.  This refinement allows the ants make decisions based on the current configuration and independent from other ants in the same time cycle.  Thus, in addition to speed gain, the revision provides better imitation of the inherent parallelism from natural ants activities.
+In each cycle, an ant determines where to move and moves there.  These activities are expensive since the ant examines the surrounding neighborhood to decide its next destination, deposits pheromone on the way, and updates its new position.  In the sequential version, the actions of an ant have influences on the decisions of the other ants, even they occur in same time cycle. We redesign this part by separating it into two operations and parallelize them both as illustrated in Figure~\ref{fig:par_ops}.  This refinement allows the ants make decisions based on the current configuration and independent from other ants in the same time cycle.  Hence, in addition to speed gain, the revision provides better imitation of the inherent parallelism from natural ants activities.
 
-At each cycle, a small amount of pheromone is vaporized from each edge adjacent to the location of a departing ant. This procedure is time costly since the algorithm checks if the surrounding regions of the ant need updates whenever it moves. Moreover, this part cannot be parallelized since simultaneous updates to the same area can occur due to movements from ants in nearby regions.
+Upon the departure of an ant, a small amount of pheromone is vaporized from its surrounding regions. This evaporation only happens on an edge once per cycle. This procedure is time costly since the algorithm checks if the edges adjacent to the location of the ant need updates whenever it moves. Moreover, this part cannot be concurrently processed as simultaneous updates to the same area can occur due to movements from ants in nearby regions.
 
-We resolve this situation by having the selection of which edge to be updated done in parallel, but the actual updating process is done sequentially.  A global shared Boolean array of size equals to the number of edges is created with everything initialized to \textit{false}.  When the pheromone on an edge sets to be updated, the corresponding value of that edge in the array is marked as \textit{true}.  Hence, even if multiple updates occur concurrently on the edge, its value still remains the same. After all ants make moves, the algorithm scans and updates the pheromone information on the marked edges in the array.  Note we can also parallel the scanning and updating pheromone steps, however experiments show these simple operations achieve no significant improvement from parallel processing.
+As shown in Figure~\ref{fig:par_ops}, we resolve this situation by having the selection of which regions to be updated done in parallel, but the actual updating process is done in sequence.  A shared Boolean array of size equals to the number of edges is created with everything initialized to \textit{false}.  When the pheromone on an edge is determined to be updated, the corresponding value of that edge in the array is marked as \textit{true}.  Hence, even if simultaneous updates occur on the edge, its value still remains the same\footnote{Alternatively we can create multiple copies of these arrays, assign each to a parallel thread, and merge the results for the sequential update.}. After all ants make their moves, the pheromone information on the marked edges in the array are updated sequentially.  Note we also could parallel this step, however experiments show this simple operation gain no significant improvement from parallel processing.
 
-Almost any loop section in the sequential code is capable of concurrent processing with the \textit{fork-join} model; however not all make good choices for the optimization.  Low complexity tasks, such as shuffling a small portion of ants around, may worsen the overall running time as the overheads caused by forking and joining threads surpass the speed gained from parallelizing the region.  Nonetheless, even without speed improvement, in some cases parallel processing can help enhance the solution quality, hence indirectly reduce the running time by making the algorithm converges faster. Instead of parallelizing the already efficient greedy and local optimization algorithms, we independently process them in parallel and choose the best answers.  For example, in parallel, greedy algorithm runs with different decision criteria and local optimization procedure examines multiple candidate regions of the graph. Our experiments show on average, the algorithm achieves good solutions in less amount of iterations when combined with these techniques.
-
-%see how the entire paper look and perhaps expand this part !
-
-
-%todo mentioned we can try this on Coloring etc
+Almost any loop section in the sequential code can be executed in parallel with the \textit{fork-join} model; however not all make good choices for optimizations.  Low complexity tasks, such as shuffling ants, may worsen the overall running time as the overheads caused by forking and joining threads surpass the speed gained from parallel processing.  Nonetheless, even without speed improvement, in some cases parallelism helps enhance the solution quality, thus indirectly reduces the running time by making the algorithm converges faster. Instead of parallelizing the already efficient greedy and local optimization algorithms, we independently process them in parallel and choose the best answers.  For example, multiple instances of greedy algorithms parallel processes with different selection criteria and local optimization simultaneously examines multiple candidate regions on the graph. Our experiments show on average the algorithm achieves good solutions in less iterations when combined with these techniques.
 
 \subsection{The Distributed Memory Implementation (ASMC$_{DM}$)}\label{ASMC_dist} 
 
-Unlike in ASMC$_{SM}$ where straightforward modifications can be applied directly to the sequential algorithm to achieve parallelism, we often need to redesign the sequential algorithm to get the full benefits of the distributed memory architecture. 
+Unlike in ASMC$_{SM}$ where straightforward modifications can be applied directly to the sequential algorithm to achieve parallelism, we often need to redesign the sequential algorithm to get the full benefits of distributed memory architecture. 
 
-The distributed implementation built for this paper is a simple proof of concept based on the \textit{server/client} model.  Ants are distributed across a number of machines, each of which has a complete copy of the graph.  The idea is for ants to move from processor to processor.  One machine is designated the server and the others as clients.  The server coordinates four transactions: starting, ant transfer, local optimization, and ending.
+The distributed implementation built here is a simple proof of concept based on the \textit{server/client} model.  Ants are distributed across a number of machines, each of which has a complete copy of the graph.  The idea is for ants to move from processor to processor.  One machine is designated as server and the others as clients.  The server coordinates four transactions: starting, ant transfer, local optimization, and ending.
 
 
 \begin{itemize}
@@ -261,7 +199,7 @@ The distributed implementation built for this paper is a simple proof of concept
 
 \item {\bf Local optimization} occurs after each ant transfer.  Each client sends the server vertex and edge data, and the server performs the same operations as in the sequential implementation of ASMC.  In principle, this step could be redesigned to be less centralized.
 
-\item The server {\bf ends} by letting each client know that the run has ended.  %Synchonized starting and ending makes it simpler to invoke the program from a script.
+\item The server {\bf ends} by letting each client know that the run has ended.  %Synchronized starting and ending makes it simpler to invoke the program from a script.
 
 \end{itemize}
 
@@ -336,7 +274,7 @@ MANN\_a45 	&345 &342 &342.00/0.00 &342.00/0.00 &342.00/0.00 &342.00/0.00 &342.00
 \begin{center}
 \begin{tabular}{|l||c||c|c|c|c|}
 \hline
-&              & \multicolumn{4}{|c|}{Running Time Avg/Speed-up when run on $P$ processors}\\
+&              & \multicolumn{4}{|c|}{Running Time$^{\dag}$ Avg/Speed-up when run on $P$ processors}\\
 \cline{3-6}
 Graph&Veritices/Edges& 	P$_2$           &P$_4$            &P$_8$            &P$_{16}$   \\
 \hline
@@ -382,8 +320,8 @@ p\_hat1500\_1 	&1500/284923      &209.25/1.75 &117.98/3.10 &72.60/5.04 &47.47/7.
 MANN\_a27    	&378/70551 	         &21.11/1.19 &14.01/1.80 &9.98/2.52 &7.52/3.35\\
 MANN\_a45    	&1035/533115 	     &474.11/1.81 &258.94/3.30 &152.74/5.60 &94.87/9.02\\
 \hline
-%\multicolumn{9}{@{}l}{\tiny $^*$Results for 100 runs per graph.
-%\qquad\qquad $^\dag$All times are in seconds.}\\
+\multicolumn{6}{@{}l}{\tiny $^\dag$All times are in seconds.}
+%\qquad\qquad}
 \end{tabular}
 \end{center}
 \end{footnotesize}
@@ -391,20 +329,14 @@ MANN\_a45    	&1035/533115 	     &474.11/1.81 &258.94/3.30 &152.74/5.60 &94.87/9
 \linespread{1.3}
 
 %198.2924
-\textbf{Shared Memory}: We used the Intel Compiler with OpenMP support for our shared memory ASMC$_{SM}$ implementation. The OpenMP API~\cite{OpenMP} consists of compiler directives and library functions in assisting compilers to execute instructions such as forking and joining threads.  We developed the program on a multi-processor computer provided by the HP Test Drive~\cite{HPTestDrive} program. This Linux based system is equipped with sixteen Intel Itanium $1.5$ GHz processors and $8$ GB memory.
+\textbf{Shared Memory}: We used the Intel Compiler with OpenMP support for our shared memory ASMC$_{SM}$ implementation. The OpenMP API~\cite{OpenMP} consists of compiler directives and library functions in assisting compilers to execute instructions such as forking and joining threads.  We developed the program on a multiprocessor computer provided by the HP Test Drive~\cite{HPTestDrive} program. This Linux based system is equipped with sixteen Intel Itanium $1.5$ GHz processors and $8$ GB memory.
 %todo: The machine benchmark is given at the end of the paper in Figure~\ref{fig:benchmark}
 
 
 Tables~\ref{tab:spar_table} and~\ref{tab:spar_su_par_table} respectively show our parallel ASMC$_{SM}$ results and speed-up's $S_P$ achieved with different number of processors\footnote{$S_P = \frac{T_1}{T_P}$, $T_1$ is the sequential running time (e.g., on a single processor), $T_P$ is the running time with $p$ processors.}. For each of the benchmark graphs we ran our algorithm for $50$ trials, and these trials are repeated $50$ times for different number of processors $P=1,2,4,8,16$.  Table~\ref{tab:spar_table} shows that the results from the parallel implementation have similar quality as those from the sequential version.  A few parallel running times on simple instances in table~\ref{tab:spar_su_par_table} are worse than those of sequential ones. This is as expected since the overhead caused by the fork/join operations dominates the program short running time (less than a second).  The benefits of parallel processing in shared memory show on larger instances.  For medium size graphs such as \textit{keller\_5}, we reduced the running time by almost $40\%$ with dual processors.  On the two largest graph instances, \textit{MANN\_45} and \textit{HAMMING10-2}, we obtained promising speed-up's approximately $2, 3.5, 6, 9$ with $2,4,8,16$ processors, respectively.  %todo: URGENT: recheck these -- keller 5 is actually among the best, find some other ones that is more consistent
 
 
-\textbf{Distributed Memory}: Our ASMC$_{DM}$ algorithm was tested on four Sun Blade $100$ machines, each has $450$ MHz CPU, 1 GB memory, and runs Sun OS.  For this rather simple client/server model, we used the standard UNIX socket for communications among the machines.  A more compicated model using MPI is under investigation.   Table~\ref{tab:distributed1} summarizes the results from ASMC$_{DM}$. Due to time limitations we were able to run the algorithm only on a subset of the $30$ test graphs.  Also, we ran the algorithm $50$ times for each graph. % The results are comparable to that of the sequential implementation. 
-
-%The \textit{DFMAX} $(r500.5.b)$ benchmark for the machine is 218.69 (user), 0.03 (sys), 366.00 (real).%memory, operating system etc
-
-%Todo: reasons for using socket communication and not MPI
-
-%tvn: benchmark info was taken from ~/Documents/Code/Web/www_2/www/Computer/Projects/Color/Files/test_sol/benchmark/results.sparc10.41
+\textbf{Distributed Memory}: Our ASMC$_{DM}$ algorithm was tested on four Sun Blade $100$ machines, each has $450$ MHz CPU, 1 GB memory, and runs Sun OS.  For this rather simple client/server model, we used standard socket connections for communications among the machines.  A more complicated model using MPI is under investigation.   Table~\ref{tab:distributed1} summarizes the results from ASMC$_{DM}$. Due to time limitations we were able to run the algorithm only on a subset of the $30$ test graphs.  Also, we ran the algorithm $50$ times for each graph.
 
 
 This rather straightforward proof of concept implementation shows DM preserves the quality of the solutions. Moreover, it can help  balance work load to multiple machines and reduce memory space usage as each machine does not store all the data. Some enhancements under investigation include building a less centralized, peer-to-peer model.  The ant transferring step could occur asynchronously throughout each stage. The graph partitions could adapt over time to minimize the number of shared edges.  The graph itself could be distributed so that each client is completely unaware of vertices it does not ``own,'' thereby enabling runs on extremely large graphs in a reasonable time.
@@ -434,7 +366,7 @@ This rather straightforward proof of concept implementation shows DM preserves t
 \hline
 &\multicolumn{3}{|c|}{ASMC$_{DM}$}\\
 \cline{2-4}
-Graph&\multicolumn{2}{|c|}{Solution}&Time\\
+Graph&\multicolumn{2}{|c|}{Solution}&Time$^{\dag}$\\
 \cline{2-3}
                 & Best  & Avg/StdDev     	&  Avg     \\
 
@@ -458,15 +390,16 @@ brock200\_1 	  & 20 	& 18.49/0.64 	& 7.21     \\
 p\_hat300\_1 	  & 8 	& 8.00/0.00 	& 4.52     \\
 p\_hat500\_1 	  & 9 	& 8.11/0.31 	& 33.60    \\
 \hline
+\multicolumn{4}{@{}l}{\tiny $^\dag$All times are in seconds.}
 \end{tabular}
 \end{center}
 \end{footnotesize}
 \end{table*}
 
 
-\section{Conclusion and Future Research}\label{conclusion}
+\section{Conclusion and Future Work}\label{conclusion}
 
-In this paper we provided the Ant System implementations for the Max-Clique problem in three computing environments: sequential, shared, and distributed memory.  We maintained the solution quality of sequential algorithm while achieved very promising speed-up with the shared memory model. From limited experiments, we found our distributed memory implementation reduces the work load and space usage in each computer while preserving comparable results to that of the sequential version.
+In this paper we described the Ant System implementations for the Max-Clique problem in three computing environments: sequential, shared, and distributed memory.  We maintained the solution quality of sequential algorithm while achieved very promising speed-up with the shared memory model. From limited experiments, we found our distributed memory implementation reduces the work load and space usage in each computer while preserving comparable results to that of the sequential version.
 
 
 Our future plans include constructing a hybrid distributed-shared memory framework of Ant System and analyzing the effects of different network topologies on communications among colonies of ants. These ideas will be investigated more thoroughly in future studies.  
@@ -478,105 +411,112 @@ The authors would like to thank the anonymous referees for their valuable commen
 
 \begin{thebibliography}{99} 
 
-\bibitem{BP2} %use
+\bibitem{BP2} %use1
 P. Berman and A. Pelc, 
-``Distributed Fault Diagnosis For Multiprocessor Systems,'' Proceedings of the 20$_{th}$ Annual International Symposium on Fault-Tolerant Computing, pp. 340--346, Newcastle, UK, 1990.
+``Distributed Fault Diagnosis For Multiprocessor Systems,'' Proceedings of the 20$_{th}$ Annual International Symposium on Fault-Tolerant Computing,Newcastle, UK, 1990,  pp. 340--346.
 
-\bibitem{BDT} %us
-E. Bonabeau, M. Dorigo and G. Theraulaz,
-``Inspiration for Optimization from Social Insect Behavior'',
-Nature, Vol. 406, July 6, 2000, pp. 39--42.
+\bibitem{BDT} %use1
+E. Bonabeau, M. Dorigo, and G. Theraulaz, ``Inspiration for Optimization from Social Insect Behavior'', Nature, Vol. 406, July 6, 2000, pp. 39--42.
 
+\bibitem{BR} %use1
+T. Bui and J. Rizzo, ``Finding Maximum Cliques with Distributed Ants,'' Proceedings of the Genetic and Evolutionary Computation Conference, 2004, pp. 24--35.
 
-\bibitem{BR} %use
-T.N. Bui and J.R. Rizzo, ``Finding Maximum Cliques with Distributed Ants,'' Proceedings of the Genetic and Evolutionary Computation Conference, 2004, pp. 24--35.
-
-\bibitem{BS2}%use
-T.N. Bui  and G. Sundarraj,  ``Ant System for the $k$-Cardinality Tree Problem,'' Proceedings of the Genetic and Evolutionary Computation Conference, 2004, pp. 36--47.
+\bibitem{BS2}%use1
+T. Bui  and G. Sundarraj,  ``Ant System for the $k$-Cardinality Tree Problem,'' Proceedings of the Genetic and Evolutionary Computation Conference, 2004, pp. 36--47.
 
 
-\bibitem{BS1}
-T.N. Bui and L.C. Strite, ``An Ant System Algorithm for Graph Bisection,'' Proceedings of  Genetic and Evolutionary Computation Conference, 2002, pp. 43--51.
+\bibitem{BS1}%use1
+T. Bui and L. Strite, ``An Ant System Algorithm for Graph Bisection,'' Proceedings of  Genetic and Evolutionary Computation Conference, 2002, pp. 43--51.
 
-\bibitem{BZ}
-T.N. Bui and C. Zrncic, 
+\bibitem{BZ}%use1
+T. Bui and C. Zrncic, 
 
+\bibitem{B1}%use1
+B. Bullnheimer, G, Kotsis, and C. Strauss, ``Parallelization Strategies for the Ant System,'' High Performance Algorithms and Software in Nonlinear Optimization, Kluwer, Dordrecht, 1998, pp. 87--100.
 
+\bibitem{CR}%use1
+M. Craus  and L. Rudeanu, ``Parallel Framework for Ant-like Algorithms'' %incomp
 
-\bibitem{DD} %use
-M. Dorigo and G. Di Caro,
-``The Ant Colony Optimization Meta-Heuristic,''
-{\it New Ideas in Optimization}, McGraw-Hill, 1999, pp. 11--32.
-
-
-\bibitem{DG}%use
-M. Dorigo and L. Gambardella,
-``Ant Colony System: A Cooperative Learning Approach to the Traveling
-Salesman Problem,''
-IEEE Trans. on Evol. Computation, 1(1), 1997, pp. 53--66.
+\bibitem{PKGG}%use1  %incomplete
+P. Delisle, M. Krajecki, M. Gravel, and C. Gagn\'e, ``Parallel Implementation of An Ant colony Optimization Metaheuristic With OpenMP,'' Proceedings of the 3rd European Workshop on OpenMP (EWOMP’01), Barcelona, Spain, 2001.
 
 
-\bibitem{Hastad}
-J. Hastad, ``Clique Is Hard to Approximate within $n^{1 - \epsilon}$,'' Acta Mathematica, 182, pp. 105--142, 1999.
+\bibitem{DHKLR} %use1 incomplete
+K. Doerner , R. Hartl , G. Kiechle , M. Lucka , and M. Reimann, ``Parallel Ant Systems for the Capacitated Vehicle Routing Problem,''
+
+
+\bibitem{DD} %use1
+M. Dorigo and G. Di Caro, ``The Ant Colony Optimization Meta-Heuristic,'' New Ideas in Optimization, McGraw-Hill, 1999, pp. 11--32.
+
+
+\bibitem{DG}%use1
+M. Dorigo and L. Gambardella, ``Ant Colony System: A Cooperative Learning Approach to the Traveling Salesman Problem,'' IEEE Trans. on Evol. Computation, 1(1), 1997, pp. 53--66.
+
+\bibitem{TAIL} %use1
+M. Dorigo, L. Gambardella, and E. Taillard, ``Ant Colonies for the Quadratic Assignment Problem,'' Journal of the Operational Research Society, Vol 50, 1999, pp. 167--176.
+
+
+\bibitem{Hastad}%use1
+J. Hastad, ``Clique Is Hard to Approximate within $n^{1 - \epsilon}$,'' Acta Mathematica, 182, 1999, pp. 105--142.
+
+
+\bibitem{Keller}%use1
+O. Keller, ``\"Uber die l\"uckenlose Erf\"ullung des Raumes mit W\"urfen,'' Journal f\"ur die reine und angewandte Mathematik, 163,  1930, pp. 231--238.
+
+\bibitem{LS}%use1
+J. Lagarias and P. Shor, ``Keller's Cube-Tiling Conjecture Is False In High Dimensions,'' Bulletin of the American Mathematical Society, 27(2), 1992, pp. 279--283.
+
+
+\bibitem{MBSD}%use1
+M. Manfrin, M. Birattari, Thomas St\"utzle, and M. Dorigo, ``Parallel Ant Colony Optimization for the Traveling Salesman Problem,'' M. Dorigo et al. (Eds.): ANTS 2006, Lecture Notes in Computer Science, 4150, 2006, pp. 224--234.
+
+
+\bibitem{MC} %use1
+V. Maniezzo and A. Carbonaro, ``Ant Colony Optimization: An Overview,'' Essays and Surveys in Metaheuristics, C. Ribeiro editor, Kluwer Academic Publishers, 2001, pp. 21--44.
+
+
+
+\bibitem{MRS}%use1
+M. Middendorf, F. Reischle, and H. Schmeck, ``Multi Colony Ant Algorithms,'' Journal of Heuristic, 8, 2002, pp. 305--320.
+
 
 \bibitem{PH}
-D A. Patterson and J. L. Hennessy, ``Computer Organization and Design (Second Edition),'' Morgan Kaufmann Publishers, 1998.
-
-\bibitem{GHZ}
-P. Galinier, A. Hertz, N. Zufferey,
-``Adaptive Memory Algorithms for Graph Coloring'',
-{\it Computational Symposium on Graph Coloring and its Generalizations}, 
-COLOR02,
-Cornell University, September 2002.
-
-\bibitem{TRFR} %incomplete
-Talbi, E., ``Parallel Ant Colonies for Combinatorial Optimization Problems''.
-
-\bibitem{RL}
-Marcus Randall and Andrew Lewis, ``A parallel implementation of Ant Colony Optimization''.
+D. Patterson and J. Hennessy, ``Computer Organization and Design ($2^{nd}$ Edition),'' Morgan Kaufmann Publishers, 1998.
 
 
-\bibitem{SMW}%use
-N. J. A. Sloane and F. J. MacWilliams, ``The Theory of Correcting Codes,'' North Holland, Amsterdam, 1979.
+\bibitem{RL}%use1
+M. Randall and A. Lewis, ``A Parallel Implementation of Ant Colony Optimization,'' Journal of Parallel and Distributed Computing, 62(9), 2002, pp. 1421--1432.
 
-\bibitem{Sloane}
-N. J. A. Sloane, ``Unsolved Problems in Graph Theory Arising from the Study of Codes,'' Graph Theory Notes of New York, XVIII, pp. 11--20, 1989.
-
-
-\bibitem{Keller}
-O. H. Keller, ``\"Uber die l\"uckenlose Erf\"ullung des Raumes mit W\"urfen,'' 
-Journal f\"ur die reine und angewandte Mathematik, 163, pp. 231--238, 1930.
-
-\bibitem{LS}
-J. C. Lagarias and P. W. Shor, ``Keller's Cube-Tiling Conjecture Is False In High Dimensions,'' Bulletin of the American Mathematical Society, 27(2), pp. 279--283, 1992.
+\bibitem{Sloane}%use1
+N. Sloane, ``Unsolved Problems in Graph Theory Arising from the Study of Codes,'' Graph Theory Notes of New York, XVIII, 1989, pp. 11--20.
 
 
-\bibitem{TAIL}
-Dorigo, M., L. M. Gambardella, and E. Taillard,
-\newblock ``Ant Colonies for the Quadratic Assignment Problem,''
-\newblock {Journal of the Operational Research Society}, Volume 50, February 1999, pp. 167--176.
+\bibitem{SMW}%use1  %incomplete
+N. Sloane and F. MacWilliams, ``The Theory of Correcting Codes,'' North Holland, Amsterdam, 1979.
+
+\bibitem{Stutzle}%use1
+T. St\"utzle, ``Parallelization strategies for ant colony optimization,'' Proceedings of Parallel Problem Solving from Nature, Lecture Notes in Computer Science, 1498, Springer, 1998, pp. 722--741.
 
 
-\bibitem{MC} %use
-V. Maniezzo and A. Carbonaro, ``Ant Colony Optimization: An Overview'', ``Essays and Surveys in Metaheuristics,'' C. Ribeiro editor, Kluwer Academic Publishers, 2001, pp. 21--44.
+
+\bibitem{TRFR}%use1
+E.-G. Talbi, O. Roux, C. Fonlupt, and D. Robillard, ``Parallel Ant Colonies for Combinatorial Optimization Problems,'' Feitelson 
+\& Rudolph (Eds.), Job Scheduling Strategies for Parallel Processing: IPPS ’95 Workshop, Lecture Notes in Computer Science, 949, Springer, volume 11, 1999.
 
 
-\bibitem{PKGG}%use  %incomplete
-Delisle P., M. Krajecki., ``Parallel Implementation of An Ant colony Optimization Metaheuristic With OpenMP''.
-
-\bibitem{cluster}
+\bibitem{cluster}%use1
 The Beowulf Project. http://www.beowulf.org. Last accessed March 2008.
 
-\bibitem{MPI}
+\bibitem{HPTestDrive}%use1
+The Hewlett Packard Test Drive Program. http://www.testdrive.hp.com. Last accessed March 2008.
+
+
+\bibitem{MPI}%use1
 MPI - The Message Passing Interface Standard. http://www-unix.mcs.anl.gov/mpi/. Last accessed March 2008.
 
 
-\bibitem{OpenMP}
+\bibitem{OpenMP}%use1
 OpenMP Architecture Review Board. http://www.openmp.org/specs/. Last accessed March 2008.
-
-
-\bibitem{HPTestDrive}
-The Hewlett Packard Test Drive Program. http://www.testdrive.hp.com. Last accessed March 2008.
 
 \end{thebibliography}
 
@@ -740,7 +680,7 @@ The Hewlett Packard Test Drive Program. http://www.testdrive.hp.com. Last access
 % \bibitem{FF}
 % C. Fleurent and J. Ferland,
 % ``Genetic and Hybrid Algorithms for Graph Coloring'',
-% {\it Annals of Operations Research}, Volume 63, 1996, pp. 437--461.
+% {\it Annals of Operations Research}, Vol 63, 1996, pp. 437--461.
 
 % \bibitem{MN}
 % K. Mizuno, S. Nishihara,
@@ -753,7 +693,7 @@ The Hewlett Packard Test Drive Program. http://www.testdrive.hp.com. Last access
 % C. Morgenstern,
 % ``Distributed Coloration Neighborhood Search'',
 % {\it Cliques, Coloring and Satisfiability -- Second DIMACS Implementation
-% Challenge 1993}, American Mathematical Society, Volume 26 (1996), pp. 
+% Challenge 1993}, American Mathematical Society, Vol 26 (1996), pp. 
 % 335--358.
 
 % \bibitem{PS}
@@ -787,7 +727,7 @@ The Hewlett Packard Test Drive Program. http://www.testdrive.hp.com. Last access
 % F. Glover, M.Parker, J. Ryan,
 % ``Coloring by Tabu Branch and Bound'',
 % {\it Cliques, Coloring and Satisfiability -- Second DIMACS Implementation
-% Challenge 1993}, American Mathematical Society, Volume 26 (1996), pp. 
+% Challenge 1993}, American Mathematical Society, Vol 26 (1996), pp. 
 % 285--307.
 
 % \bibitem{GOM}
@@ -801,7 +741,7 @@ The Hewlett Packard Test Drive Program. http://www.testdrive.hp.com. Last access
 % \bibitem{HWe}
 % A. Hertz, D. Werra,
 % ``Using Tabu Search Techniques for Graph Coloring'',
-% {\it Computing}, Volume 39, 1987, pp. 345--351.
+% {\it Computing}, Vol 39, 1987, pp. 345--351.
 
 % \bibitem{H}
 % M. M. Halld\'orsson,
@@ -827,14 +767,14 @@ The Hewlett Packard Test Drive Program. http://www.testdrive.hp.com. Last access
 % {\it Cliques, Coloring and Satisfiability -- Second DIMACS Implementation
 % Challenge 1993,}  
 % DIMACS Series in Discrete Mathematics and Theoretical Computer Science,
-% American Mathematical Society, Volume 26 (1996).
+% American Mathematical Society, Vol 26 (1996).
 
 % \bibitem{LC}
 % G. Lewandowski, A. Condon,
 % ``Experiments with Parallel Graph Coloring Heuristics and Applications of
 % Graph Coloring'',
 % {\it Cliques, Coloring and Satisfiability -- Second DIMACS Implementation
-% Challenge 1993}, American Mathematical Society, Volume 26 (1996), pp. 
+% Challenge 1993}, American Mathematical Society, Vol 26 (1996), pp. 
 % 309-334.
 
 % \bibitem{L}
@@ -883,7 +823,7 @@ The Hewlett Packard Test Drive Program. http://www.testdrive.hp.com. Last access
 % J. Culberson, F. Luo,
 % ``Exploring the k-colorable landscape with Iterated Greedy'',
 % {\it Cliques, Coloring and Satisfiability -- Second DIMACS Implementation
-% Challenge 1993}, American Mathematical Society, Volume 26 (1996), pp. 
+% Challenge 1993}, American Mathematical Society, Vol 26 (1996), pp. 
 % 245--284.
 
 
@@ -1128,3 +1068,58 @@ The Hewlett Packard Test Drive Program. http://www.testdrive.hp.com. Last access
 
 
 
+ % The results are comparable to that of the sequential implementation. 
+
+%The \textit{DFMAX} $(r500.5.b)$ benchmark for the machine is 218.69 (user), 0.03 (sys), 366.00 (real).%memory, operating system etc
+
+%Todo: reasons for using socket communication and not MPI
+
+%tvn: benchmark info was taken from ~/Documents/Code/Web/www_2/www/Computer/Projects/Color/Files/test_sol/benchmark/results.sparc10.41
+
+
+%Another technique with OpenMP - reword this 
+
+%the AMSC best shows the best solution found from our ASMC algorithms.  We note that the main objective of this paper is not finding the best algorithm for the MAX-clique problem but rather to apply parallism to an existing AS algorithm. 
+
+%TODO: find out about socket communcation in UNIX
+%todo:
+%bibs for literatures
+%openmp existing algirthm
+%rewrite the Ant System vs ACO (use Rizzo's thesis)
+%proof read the algorithm  & conclusion part, make sure all portions are distributed equally (e.g., alg should take the most part).  Any thing else to add to the distributed one ?
+%clean up the expt results, explain all times are in sec etc.
+%too many *Bui* bibs for Ant System.  can say something like Sekar's Maste theeiss or something.
+
+
+
+%abstract intro: p1
+%background: p2-3
+%algs: p4-8 %The distributed part: put some details such as using gprof balh blah balh but don't go into too details - just as how I did with the seq part, evaporation , adaptive behavior and all ..
+%exp results & tables: p9-12
+%con: 12
+%ref: 13
+
+
+%todo: 4/19 (Wed) - intro & conclusion, 4/20 (Thurs): background (parallel part) - also try to cover the sequ sect in ch3,  4/21 (Fri): ch3: overall forewords of both shared/distributed, then in details about shared mem implementation  4/22 (Sat): ch3 rewrite Rizzo's dist discussion & experiment results.  4/23 (Sun): review, review, review ... draft.  KEEP IT UNDER 12 PAGES !!!!
+
+%todo: put in the results of my algorithm in the sequential section, mention we have redesign Bui's algorithm and gain better results.  But stress that this paper is not about result of AMSC seq
+
+%todo: table probably shorten it, use the base ones - for openmp includes several big ones to demo.  The rest can be found on supporting material page.
+
+
+%todo: urgent: shorten the length so ppl don't question much about the details - can provide a supporting material website.
+%todo: openmp, parallel the local opt and greedy techniques.
+%todo: check this file, even though doesn't have keller5 info but based on 2 processors, I can estimate.
+%file:///Users/thanhvu/Documents/School/PSU/COMP600_Thesis/Clique/results
+
+%todo: urgent: need Existing algorithms
+
+% In limited experience, we found that adding pheromone to this 
+%particular algorithm takes more time and gives no visible quality improvement. 
+%Other techniques such as tabu lists and local optimization are also included to 
+%help the agents in ﬁnding good solutions. 
+
+
+%TODO: need to do some literature review, show some recent works. How is mine different (probably I can ignore this because this is for my *own* max clique algorithm.  In this case then go back to "provide the incentives for many recent studies [refs] on Ant based algorithm in concurrent".
+
+%TODO: kill the references!!!
