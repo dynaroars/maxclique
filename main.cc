@@ -1,23 +1,14 @@
-
 #include "everything.h"
 
+void runStageLoop(const int nVertices,const int nEdges); 
 
+int main(int argc, char *argv[]){
+  
+  if (argc < 2){
+    cerr << "Usage: " << argv[0]  <<  " infile";
+    exit(1);}
 
-void runStageLoop(const int nVertices,
-				  const int nEdges); 
-
-
-
-
-int main(int argc, char *argv[]){// Main program
-
-  if (argc < 2) {cerr << "Usage: " << argv[0]  <<  " infile";exit(1); }
-
-
-  if (argc==3){
-    seed_t = atoi(argv[2]);
-  }
-
+  if (argc==3) seed_t = atoi(argv[2]);
   else seed_t = time(0);
 
 
@@ -26,14 +17,11 @@ int main(int argc, char *argv[]){// Main program
   //BUG: make sure that nothing is randomize in the slaves (except ants movement),
   //all randomize , ie.e local optimization is to be done on the MASTER
   
-
 #ifdef D1
 #warning "D1: Seeding info on"
   int myRandN = genrand_int32()%1000;
   cout << "Seed: " << seed_t << ", rand num " << myRandN << endl;
 #endif
-
-
 
 
   //read in graph
@@ -47,7 +35,7 @@ int main(int argc, char *argv[]){// Main program
 
 #ifdef _DEBUG
   printf("Graph %s, #vertices: %d, #nedges: %d, #ants: %d\n",
-		 sInFile,nVertices,nEdges,nAnts);
+	 sInFile,nVertices,nEdges,nAnts);
 #endif
 
 
@@ -82,7 +70,6 @@ int main(int argc, char *argv[]){// Main program
 #else
   nthreads=1;
 #endif 
-
 
 
   //initilizing 
