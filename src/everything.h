@@ -1,3 +1,4 @@
+#include <cstdio>
 #include <cassert>
 #include <cmath>
 #include <iostream>
