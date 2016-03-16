@@ -1,4 +1,31 @@
-#include "everything.h"
+#include <cstdio>
+#include <cassert>
+#include <cmath>
+#include <iostream>
+#include <string>
+#include <vector>
+#include <algorithm>
+#include <cstdlib>
+using namespace std;
+
+#ifdef USE_MPI
+#include <mpi.h>
+#endif
+
+#ifdef _OPENMP
+#include <omp.h>
+#endif
+
+#include "MT_rand.h"
+#include "Dimacs.h"
+#include "settings.h"
+#include "maxclique.h"
+#include "AntsOps.h" //header for Ants operations s.a moving etc
+#include "localOptimize.h"
+#include "localOptimizePAR.h"
+
+
+
 
 void runStageLoop(const int nVertices,const int nEdges); 
 
@@ -169,9 +196,3 @@ void runStageLoop(const int nVertices,
 
   }//end iStage
 }
-
-
-
-
-
-
