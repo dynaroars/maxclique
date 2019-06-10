@@ -6,11 +6,8 @@ This project implements an Ant-based algorithm to find a maximum clique from a g
 
 ## Compile and Run ###
 ```
-# compile
 $ cd src
 $ make
-
-# run example
 
 # run the program ../examples/brock200_1.clq.b with seed 1
 $ ./maxclique  ../examples/brock200_1.clq.b 1
