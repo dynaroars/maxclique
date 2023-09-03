@@ -1,6 +1,6 @@
 ## Introduction
 
-**AMC** implements an Ant-based algorithm to find a maximum clique from a given graph. It can be used with a compiler (e.g. GCC or Intel Compiler suite) that supports OpenMP for parallelism.
+**AMC** implements a parallel Ant-based algorithm to find a maximum clique from a given graph. It can be used with a compiler (e.g. GCC) that supports OpenMP for parallelism.
 
 ## Requires
 * C++ Compiler
