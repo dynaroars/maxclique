@@ -302,7 +302,7 @@ void printDHasP(const char* c, const int nEdges,int printAlot){
     assert(pEdges[i]->pOnEdge>=0);
   }
   printf("DHasP: ");
-  printf(c);
+  printf("%s",c);
   printf(", p amount %d, dHasP %d, ants %zu \n",
 	 testPheromoneAmount,dHasP,vAnts.size());
   //dHasPCode

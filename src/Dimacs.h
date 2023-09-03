@@ -128,20 +128,20 @@ void readDIMACSBinaryFormat(char *file, int &nVertices, int &nEdges){
   //                              MSDN help for fopen for details.
 
   if ( (fp=fopen(file,"rb"))==NULL )
-    { printf("ERROR: Cannot open infile\n"); scanf("%d", i); }
+    { printf("ERROR: Cannot open infile\n"); scanf("%d", &i); }
 
   if (!fscanf(fp, "%d\n", &length))
-    { printf("ERROR: Corrupted preamble.\n"); scanf("%d", i); }
+    { printf("ERROR: Corrupted preamble.\n"); scanf("%d", &i); }
 
   if(length >= MAX_PREAMBLE)
-    { printf("ERROR: Preamble is too long.\n"); scanf("%d", i); }
+    { printf("ERROR: Preamble is too long.\n"); scanf("%d", &i); }
        
   fread(Preamble, 1, length, fp);
   Preamble[length] = '\0';
   
 
   if (!getDIMACSBinaryParams(nVertices,nEdges))
-      { printf("ERROR: Corrupted preamble.\n"); scanf("%d", i); }
+      { printf("ERROR: Corrupted preamble.\n"); scanf("%d", &i); }
 
 
   // Load the edge info into Bitmap.
